@@ -1,0 +1,168 @@
+
+enum SystemMessageType
+{
+    SYSTEM_BASE = 256 ;
+    REGISTER_REQUEST = 257 ;
+    REGISTER_RESPONSE = 258 ;
+    STATUS_REQUEST = 259 ;
+    STATUS_RESPONSE = 260 ;
+    CONFIG_DATA_REQUEST = 261 ;
+    CONFIG_DATA_RESPONSE = 262 ;
+    HTTP_REQUEST = 263 ;
+
+    VOTE_REQUEST = 265 ;    // VoteData
+    VOTE_RESPONSE = 266 ;   // VoteResponse
+
+    VOTE_NOTIFY = 267 ;     // VoteData
+
+    PUSH_QUEUE_REQUEST = 269 ;    // PushQueueRequest
+    PUSH_QUEUE_RESPONSE = 270 ;   // CommonResponse
+
+    POP_QUEUE_REQUEST = 271 ;    // PopQueueRequest
+    POP_QUEUE_RESPONSE = 272 ;   // CommonResponse
+
+    SYNC_QUEUE_REQUEST = 273 ;    // SyncQueueRequest
+    SYNC_QUEUE_RESPONSE = 274 ;   // SyncQueueData
+    //SYNC_QUEUE_NOTIFY = 275 ;     // SyncQueueData
+
+    FORWARD_REQUEST = 277 ;  //ForwardData
+    FORWARD_RESPONSE = 278 ; //ForwardData
+
+    BROADCAST_NOTIFY = 500 ;
+    
+}
+
+enum SystemErrorType
+{
+    EC_SUCCESS = 0 ;
+    EC_VOTE_FAILED = 257 ;
+    EC_VOTE_LEADER_EXIST = 258 ;
+}
+
+message CommonResponse
+{
+    optional int32 error_code = 1 [default=0];
+}
+
+
+message RegisterRequest
+{
+    required int32 node_type = 1 [default=0] ;
+    required int32 node_id = 2 [default=0] ;
+
+}
+
+message RegisterResponse
+{
+    required int32 error_code = 1 [default=0] ;
+}
+
+message StatusRequest
+{
+
+}
+
+message StatusResponse
+{
+
+}
+
+message ConfigData
+{
+    required int32 node_type = 1 ;
+    optional int32 protect_mode = 4 [default=0] ;
+    required string data = 2 ;
+    repeated int32 online_node_list = 3 ;
+}
+
+message ConfigDataRequest
+{
+
+    repeated int32 node_type_list = 1 ;
+}
+
+
+message ConfigDataResponse
+{
+    required int32 error_code =1 [default=0] ;
+    repeated ConfigData data_list = 3 ;
+}
+
+message BroadcastNotify
+{
+    repeated int32 uid_list =1 ;
+    optional int32 msg_type = 2 [default=0];
+    required bytes data = 3 ; // encoded protobuf message
+
+}
+
+message VoteData
+{
+    optional int32 vote_id = 1 [default=0];
+    optional int32 node_id = 2 [default=0];
+    optional int64 trans_id = 3 [default=0];
+    optional int32 port = 4 [default=0];
+    optional string host = 5 [default=""];
+
+}
+
+message VoteResponse
+{
+    required int32 error_code = 1 [default=0] ;
+    optional VoteData data = 2 ;
+}
+
+message PushQueueRequest 
+{
+    required int64 trans_id = 1 ;
+    required string queue = 2 ;
+    required int32 message_id = 3 ;
+    optional int32 delay = 4 [default=0];
+    optional int32 ttl = 5 [default=0];
+    optional int32 retry = 6 [default=0];
+    optional int32 max_count = 7 [default=0]; 
+    required bytes data = 8 ; 
+}
+
+message PopQueueRequest
+{
+    required int64 trans_id = 1 ;
+    required string queue = 3 ; 
+    required int32 message_id = 4 ;
+}
+
+message SyncQueueRequest
+{
+    required int64 last_trans_id = 1 ;
+
+}
+
+
+message SyncQueueData 
+{
+    required int64 last_trans_id = 8 ;
+    required int64 trans_id = 1 ;
+    required string queue = 2 ; 
+    required int32 op_type = 3 ;
+    required int32 message_id = 4 ;
+    optional int32 delay = 5 [default=0];
+    optional int32 ttl = 6 [default=0];
+    optional int32 retry = 7 [default=0]; 
+    optional bytes data = 9 ; 
+}
+
+message ForwardData
+{
+    required bytes data = 1 ;
+    required bytes source = 2 ;
+    required int32 timestamp = 3 ;
+}
+
+
+
+
+
+
+
+
+
