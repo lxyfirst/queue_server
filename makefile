@@ -19,4 +19,5 @@ clean:
 install:
 	@if ! [ -e deploy ] ; then mkdir deploy ; fi
 	cp -f queue_server/*.bin deploy/
+	cp -f queue_server/*.sh deploy/
 	cp -f queue_server/*.xml deploy/
