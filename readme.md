@@ -110,7 +110,7 @@ total:10000 fail:0 min:0.000278 max:0.004305 avg:0.000584
  leader_id ： master节点id 。    
  node_id : 处理请求节点id 。   
  log_size : 消息日志数量。   
- max_log_size ： 消息日志最大数量。   
+ max_log_size ： 消息日志最大数量。    
  trans_id ： 当前trans_id值。   
- master_host : master节点地址。
- master_port : master节点端口。
+ master_host : master节点地址。  
+ master_port : master节点端口。  
