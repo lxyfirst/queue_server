@@ -10,7 +10,6 @@
 #include "queue_processor.h"
 #include "queue_server.h"
 
-
 QueueProcessor::QueueProcessor()
 {
 
@@ -24,8 +23,8 @@ QueueProcessor::~QueueProcessor()
 
 int QueueProcessor::fill_response(Value& request,int code,const char* reason)
 {
-    request["code"] = code ;
-    if(code !=0) request["reason"] = reason ;
+    request[FIELD_CODE] = code ;
+    if(code !=0) request[FIELD_REASON] = reason ;
     return 0 ;
 }
 
@@ -34,9 +33,9 @@ int QueueProcessor::redirect(Value& request)
     const VoteData* leader_info = get_app().leader_vote_data();
     if(leader_info == NULL ||  leader_info->port() < 1) return -1;
 
-    request.removeMember("data") ;
-    request["master_host"]= leader_info->host();
-    request["master_port"]= leader_info->port();
+    request.removeMember(FIELD_DATA) ;
+    request[FIELD_MASTER_HOST]= leader_info->host();
+    request[FIELD_MASTER_PORT]= leader_info->port();
 
     fill_response(request,-2,"redirect") ;
     return 0 ;
@@ -45,15 +44,15 @@ int QueueProcessor::redirect(Value& request)
 
 int QueueProcessor::process(Value& request)
 {
-    if(!request["action"].isInt() ) return -1 ;
-    int action = request["action"].asInt() ;
+    if(!request[FIELD_ACTION].isInt() ) return -1 ;
+    int action = request[FIELD_ACTION].asInt() ;
 
     if((!get_app().is_leader() ) && action < ACTION_LOCAL_START) return redirect(request);
 
     if(action == ACTION_LIST || action == ACTION_LOCAL_LIST ) return process_list(request) ;
 
-    if(!request["queue"].isString()) return -1 ;
-    std::string queue_name = request["queue"].asString() ;
+    if(!request[FIELD_QUEUE].isString()) return -1 ;
+    std::string queue_name = request[FIELD_QUEUE].asString() ;
     Queue* queue = get_app().get_worker().get_queue(queue_name) ;
     if(queue == NULL) return fill_response(request,-1,"invalid queue") ;
 
@@ -80,27 +79,27 @@ int QueueProcessor::process(Value& request)
 }
 int QueueProcessor::process_produce(Value& request,Queue& queue)
 {
-    if(!request["data"].isString()) return -1 ;
+    if(!request[FIELD_DATA].isString()) return -1 ;
 
     int now = time(0) ;
-    int delay =  request["delay"].isInt() ?  request["delay"].asInt() : now ;
-    int ttl = request["ttl"].isInt() ?  request["ttl"].asInt() : now + 86400 ;
+    int delay =  request[FIELD_DELAY].isInt() ?  request[FIELD_DELAY].asInt() : now ;
+    int ttl = request[FIELD_TTL].isInt() ?  request[FIELD_TTL].asInt() : now + 86400 ;
     if( delay >= ttl ) return -1 ;
 
-    int retry = request["retry"].isInt() ?  request["retry"].asInt() : 0 ;
+    int retry = request[FIELD_RETRY].isInt() ?  request[FIELD_RETRY].asInt() : 0 ;
     if(retry < 0 ) return -1 ;
 
-    int msg_id = queue.produce(request["data"].asString(),delay,ttl,retry) ;
+    int msg_id = queue.produce(request[FIELD_DATA].asString(),delay,ttl,retry) ;
 
-    request.removeMember("data") ;
-    request.removeMember("delay") ;
-    request.removeMember("ttl") ;
-    request.removeMember("retry") ;
+    request.removeMember(FIELD_DATA) ;
+    request.removeMember(FIELD_DELAY) ;
+    request.removeMember(FIELD_TTL) ;
+    request.removeMember(FIELD_RETRY) ;
 
 
     if(msg_id >0)
     {
-        request["msg_id"] = msg_id ;
+        request[FIELD_MSG_ID] = msg_id ;
         fill_response(request) ;
     }
     else
@@ -117,8 +116,8 @@ int QueueProcessor::process_consume(Value& request,Queue& queue)
     int msg_id = queue.consume(data) ;
     if(msg_id >0)
     {
-        request["msg_id"] = msg_id ;
-        request["data"] = data ;
+        request[FIELD_MSG_ID] = msg_id ;
+        request[FIELD_DATA] = data ;
     }
 
     return fill_response(request) ;
@@ -126,7 +125,7 @@ int QueueProcessor::process_consume(Value& request,Queue& queue)
 
 int QueueProcessor::process_confirm(Value& request,Queue& queue)
 {
-    int msg_id = request["msg_id"].asInt() ;
+    int msg_id = request[FIELD_MSG_ID].asInt() ;
     queue.erase(msg_id) ;
 
     return fill_response(request) ;

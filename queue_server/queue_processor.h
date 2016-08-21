@@ -26,6 +26,18 @@ enum
 
 };
 
+static const char* FIELD_CODE = "code" ;
+static const char* FIELD_REASON = "reason" ;
+static const char* FIELD_DATA = "data" ;
+static const char* FIELD_MASTER_PORT = "master_port" ;
+static const char* FIELD_MASTER_HOST = "master_host" ;
+static const char* FIELD_ACTION = "action" ;
+static const char* FIELD_QUEUE = "queue" ;
+static const char* FIELD_DELAY = "delay" ;
+static const char* FIELD_TTL = "ttl" ;
+static const char* FIELD_RETRY = "retry" ;
+static const char* FIELD_MSG_ID = "msg_id" ;
+
 class QueueProcessor
 {
 public:
