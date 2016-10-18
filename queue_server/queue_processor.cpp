@@ -161,7 +161,7 @@ int QueueProcessor::process_monitor(Value& request,Queue& queue)
 {
     request["size"] = queue.size() ;
     request["max_id"] = queue.max_id() ;
-    request["wait_size"] = queue.wait_size() ;
+    request["wait_status"] = queue.wait_status() ;
     request["max_size"] = get_app().queue_size() ;
     Value server_info ;
     get_app().server_info(server_info) ;

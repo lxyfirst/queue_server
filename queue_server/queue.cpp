@@ -194,20 +194,21 @@ void Queue::check_work_queue()
     else m_check_key = it->first ;
 }
 
-int Queue::wait_size() const
+int Queue::wait_status() const
 {
-    int now = time(NULL) ;
-    QueueIndex::const_iterator end = m_work_queue.lower_bound(now) ;
-    if(end == m_work_queue.end() ) return 0 ;
-    int size = 0 ;
-    for(QueueIndex::const_iterator it=m_work_queue.begin();it!=end;++it)
+    int now = time(NULL) , count = 0 ,total_time =0 ;
+    for(QueueIndex::const_iterator it=m_work_queue.begin();it!=m_work_queue.end();++it)
     {
-        ++size ;
+        if( (count & 0x10) || (it->first > now) ) break ;
+        total_time += (now - it->first) & 0xFF ;
+        ++count ;
+
     }
 
-    return size ;
+    return total_time ;
 
 }
+
 
 
 void Queue::on_timeout(framework::timer_manager* manager)

@@ -37,7 +37,6 @@ static const char* FIELD_DELAY = "delay" ;
 static const char* FIELD_TTL = "ttl" ;
 static const char* FIELD_RETRY = "retry" ;
 static const char* FIELD_MSG_ID = "msg_id" ;
-static const char* FIELD_WAIT_SIZE = "wait_size" ;
 
 class QueueProcessor
 {
