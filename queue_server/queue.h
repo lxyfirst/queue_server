@@ -44,7 +44,7 @@ public:
 
     int size() const { return m_message.size() ; } ;
     int max_id() const { return m_seq_id ; } ;
-
+    int wait_size() const ;
     /*
      * @brief 发布消息
      * @param request 消息对象

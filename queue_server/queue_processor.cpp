@@ -53,6 +53,32 @@ int QueueProcessor::process(Value& request)
 
     if(!request[FIELD_QUEUE].isString()) return -1 ;
     std::string queue_name = request[FIELD_QUEUE].asString() ;
+
+    if(action == ACTION_PRODUCE )
+    {
+        const QueueNameContainer* queue_list = get_app().real_queue_name(queue_name) ;
+        if (queue_list)
+        {
+            for(int i = queue_list->size() -1 ; i >=0 ; --i)
+            {
+                Queue* queue = get_app().get_worker().get_queue((*queue_list)[i]) ;
+                if(queue) process_produce(request,*queue) ;
+            }
+
+        }
+        else
+        {
+            Queue* queue = get_app().get_worker().get_queue(queue_name) ;
+            if(queue) process_produce(request,*queue) ;
+        }
+
+        request.removeMember(FIELD_DATA) ;
+        request.removeMember(FIELD_DELAY) ;
+        request.removeMember(FIELD_TTL) ;
+        request.removeMember(FIELD_RETRY) ;
+        return 0 ;
+    }
+
     Queue* queue = get_app().get_worker().get_queue(queue_name) ;
     if(queue == NULL) return fill_response(request,-1,"invalid queue") ;
 
@@ -91,10 +117,10 @@ int QueueProcessor::process_produce(Value& request,Queue& queue)
 
     int msg_id = queue.produce(request[FIELD_DATA].asString(),delay,ttl,retry) ;
 
-    request.removeMember(FIELD_DATA) ;
-    request.removeMember(FIELD_DELAY) ;
-    request.removeMember(FIELD_TTL) ;
-    request.removeMember(FIELD_RETRY) ;
+//    request.removeMember(FIELD_DATA) ;
+//    request.removeMember(FIELD_DELAY) ;
+//    request.removeMember(FIELD_TTL) ;
+//    request.removeMember(FIELD_RETRY) ;
 
 
     if(msg_id >0)
@@ -135,6 +161,7 @@ int QueueProcessor::process_monitor(Value& request,Queue& queue)
 {
     request["size"] = queue.size() ;
     request["max_id"] = queue.max_id() ;
+    request["wait_size"] = queue.wait_size() ;
     request["max_size"] = get_app().queue_size() ;
     Value server_info ;
     get_app().server_info(server_info) ;

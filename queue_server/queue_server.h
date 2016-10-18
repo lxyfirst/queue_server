@@ -12,7 +12,7 @@
 #include <list>
 #include <string>
 #include <tr1/unordered_map>
-
+#include <vector>
 #include "framework/application.h"
 #include "framework/tcp_acceptor.h"
 #include "framework/day_roll_logger.h"
@@ -49,7 +49,8 @@ struct SourceData
 namespace pugi { class xml_node ;} ;
 class ClientTcpHandler ;
 typedef std::map<int64_t,SyncQueueData> QueueLogContainer ;
-
+typedef std::vector<std::string> QueueNameContainer ;
+typedef std::tr1::unordered_map<std::string,QueueNameContainer > VirtualQueueContainer ;
 
 class QueueServer: public framework::application ,public ServerObserver
 {
@@ -103,6 +104,12 @@ public:
     int queue_size() const { return m_queue_config.queue_size ; } ;
     int log_size() const { return m_queue_config.log_size ; } ;
 
+    const QueueNameContainer* real_queue_name(const std::string& virtual_name)
+    {
+        if( m_virtual_queue.count(virtual_name) <1 ) return NULL ;
+        return &m_virtual_queue[virtual_name] ;
+    }
+
     Worker& get_worker() { return m_worker ; } ;
     int send_event(SyncQueueData* data) ;
 protected:
@@ -143,7 +150,7 @@ private:
 
     ServerInfoContainer m_cluster_info ;   // node list in cluster
     ServerInfo m_self_info ;               // self info in cluster
-
+    VirtualQueueContainer m_virtual_queue ;
     QueueLogContainer m_queue_log ;
     AsyncProcessorManager m_processor_manager ;
     QueueConfig m_queue_config ;

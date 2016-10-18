@@ -6,6 +6,13 @@
 
     <cluster>
         <node id="1" host="127.0.0.1" port="1101" />
+        <node id="2" host="127.0.0.1" port="1102" />
+        <node id="3" host="127.0.0.1" port="1103" />
     </cluster>
+
+    <virtual_queue name="test">
+        <queue name="test1" />
+        <queue name="test2" />
+    </virtual_queue>
 
 </root>
