@@ -47,7 +47,7 @@ int QueueServer::on_init()
     if(load_cluster_config(root)!=0) return -1 ;
     
     //init event queue
-    if(m_event_queue.init(get_app().log_size())!=0) error_return(-1,"init queue failed") ;
+    if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
     eventfd_handler::callback_type callback = member_function_bind(&QueueServer::on_event,this) ;
     if(m_event_handler.init(reactor(),callback )!=0 )
     {
@@ -484,7 +484,7 @@ void QueueServer::try_sync_queue()
 
 const SyncQueueData& QueueServer::update_queue_log(SyncQueueData& sync_data)
 {
-    if(m_queue_log.size() > get_app().log_size() )
+    if(m_queue_log.size() > log_size() )
     {
         trace_log_format(m_logger,"queue_log full size:%d",m_queue_log.size()) ;
         for(int i=0;i<10 ;++i) m_queue_log.erase(m_queue_log.begin()) ;
@@ -561,15 +561,6 @@ void QueueServer::server_info(Json::Value& info)
 
 }
 
-int parse_request(const char* begin,const char* end,Json::Value& request)
-{
-    Json::Reader reader ;
-    if(! reader.parse(begin,end,request,false) ) return -1 ;
-    if(!request.isObject()) return -2 ;
-    if(!request[FIELD_ACTION].isInt() ) return -3 ;
-    return 0 ;
-
-}
 
 IMPLEMENT_APPLICATION_INSTANCE(QueueServer) ;
 IMPLEMENT_MAIN() ;

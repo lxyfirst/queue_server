@@ -9,9 +9,21 @@
 #include "framework/member_function_bind.h"
 #include "worker.h"
 #include "queue_processor.h"
-#include "queue_server.h"
+#include "worker_util.h"
+#include "public/message.h"
 
 using namespace framework ;
+
+int parse_request(const char* begin,const char* end,Json::Value& request)
+{
+    Json::Reader reader ;
+    if(! reader.parse(begin,end,request,false) ) return -1 ;
+    if(!request.isObject()) return -2 ;
+    if(!request[FIELD_ACTION].isInt() ) return -3 ;
+    return 0 ;
+
+}
+
 
 Worker::Worker(framework::log_thread& logger):m_logger(logger)
 {
@@ -28,16 +40,16 @@ int Worker::on_init()
 {
     if(m_reactor.init(10240)!=0) error_return(-1,"init reactor failed") ;
     m_timer_engine.init(time(0),10) ;
-    if(m_event_queue.init(get_app().queue_size())!=0) error_return(-1,"init queue failed") ;
+    if(m_event_queue.init(max_queue_size())!=0) error_return(-1,"init queue failed") ;
     eventfd_handler::callback_type callback = framework::member_function_bind(&Worker::on_event,this) ;
     if(m_event_handler.init(m_reactor,callback )!=0 )
     {
         error_return(-1,"init eventfd failed") ;
     }
 
-    const VoteData& self_info = get_app().self_vote_data() ;
-    const char* listen_host = self_info.host().c_str() ;
-    int listen_port = self_info.port() ;
+    const VoteData* self_info = self_vote_data() ;
+    const char* listen_host = self_info->host().c_str() ;
+    int listen_port = self_info->port() ;
     if(m_udp_handler.init(&m_reactor,listen_host,listen_port)!=0 )
     {
         error_return(-1,"init udp failed");
@@ -83,7 +95,7 @@ void Worker::on_client_closed(ClientTcpHandler* client_handler)
 {
     if(client_handler != &m_leader_handler)
     {
-        get_app().get_worker().free_connection(client_handler);
+        free_connection(client_handler);
     }
 }
 
@@ -175,9 +187,9 @@ void Worker::on_sync_request(void* data)
 
 void Worker::on_leader_change(void* data)
 {
-    if(get_app().is_leader() ) return ;
+    if(is_leader() ) return ;
 
-    const VoteData* leader_info = get_app().leader_vote_data();
+    const VoteData* leader_info = leader_vote_data();
     if(leader_info == NULL || leader_info->host().size() < 1 || leader_info->port() < 1 ) return ;
 
     m_leader_handler.fini() ;
@@ -244,7 +256,7 @@ void Worker::list_queue(Value& queue_list)
 
 int Worker::process_forward_request(ClientTcpHandler* handler,const packet_info* pi)
 {
-    if(!get_app().is_leader() ) return -1 ;
+    if(!is_leader() ) return -1 ;
     SSForwardRequest forward ;
     if(forward.decode(pi->data,pi->size)!= pi->size) return -1 ;
 

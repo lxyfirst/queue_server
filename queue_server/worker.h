@@ -74,7 +74,7 @@ public:
 
     framework::log_thread& logger() { return m_logger ; } ;
 
-    int add_timer_after(framework::base_timer* timer,int sencods) ;
+    int add_timer_after(framework::base_timer* timer,int seconds) ;
     void del_timer(framework::base_timer* timer) ;
     void on_timeout(framework::timer_manager* manager) ;
 
@@ -103,4 +103,5 @@ private:
 
 };
 
+int parse_request(const char* begin,const char* end,Json::Value& request) ;
 

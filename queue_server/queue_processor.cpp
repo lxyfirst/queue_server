@@ -8,7 +8,7 @@
 #include <string>
 
 #include "queue_processor.h"
-#include "queue_server.h"
+#include "worker_util.h"
 
 QueueProcessor::QueueProcessor()
 {
@@ -30,7 +30,7 @@ int QueueProcessor::fill_response(Value& request,int code,const char* reason)
 
 int QueueProcessor::redirect(Value& request)
 {
-    const VoteData* leader_info = get_app().leader_vote_data();
+    const VoteData* leader_info = leader_vote_data();
     if(leader_info == NULL ||  leader_info->port() < 1) return -1;
 
     request.removeMember(FIELD_DATA) ;
@@ -56,19 +56,19 @@ int QueueProcessor::process(Value& request)
 
     if(action == ACTION_PRODUCE )
     {
-        const QueueNameContainer* queue_list = get_app().real_queue_name(queue_name) ;
+        const QueueNameContainer* queue_list = real_queue_name(queue_name) ;
         if (queue_list)
         {
             for(int i = queue_list->size() -1 ; i >=0 ; --i)
             {
-                Queue* queue = get_app().get_worker().get_queue((*queue_list)[i]) ;
+                Queue* queue = get_worker().get_queue((*queue_list)[i]) ;
                 if(queue) process_produce(request,*queue) ;
             }
 
         }
         else
         {
-            Queue* queue = get_app().get_worker().get_queue(queue_name) ;
+            Queue* queue = get_worker().get_queue(queue_name) ;
             if(queue) process_produce(request,*queue) ;
         }
 
@@ -79,13 +79,11 @@ int QueueProcessor::process(Value& request)
         return 0 ;
     }
 
-    Queue* queue = get_app().get_worker().get_queue(queue_name) ;
+    Queue* queue = get_worker().get_queue(queue_name) ;
     if(queue == NULL) return fill_response(request,-1,"invalid queue") ;
 
     switch(action)
     {
-    case ACTION_PRODUCE:
-        return process_produce(request,*queue) ;
     case ACTION_CONSUME:
         return process_consume(request,*queue) ;
     case ACTION_CONFIRM:
@@ -162,10 +160,12 @@ int QueueProcessor::process_monitor(Value& request,Queue& queue)
     request["size"] = queue.size() ;
     request["max_id"] = queue.max_id() ;
     request["wait_status"] = queue.wait_status() ;
-    request["max_size"] = get_app().queue_size() ;
+    request["max_size"] = max_queue_size() ;
+    /*
     Value server_info ;
     get_app().server_info(server_info) ;
     request["server_info"].swap(server_info) ;
+    */
 
     return fill_response(request) ;
 }
@@ -173,12 +173,14 @@ int QueueProcessor::process_monitor(Value& request,Queue& queue)
 int QueueProcessor::process_list(Value& request)
 {
     Value queue_list ;
-    get_app().get_worker().list_queue(queue_list) ;
+    get_worker().list_queue(queue_list) ;
     request["queue_count"] = queue_list.size() ;
     request["queue_list"].swap(queue_list) ;
+    /*
     Value server_info ;
     get_app().server_info(server_info) ;
     request["server_info"].swap(server_info) ;
+    */
 
     return fill_response(request) ;
 }

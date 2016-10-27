@@ -22,7 +22,7 @@
 #include "public/template_packet.h"
 
 #include "async_processor_manager.h"
-#include "worker.h"
+#include "worker_util.h"
 
 struct NodeData
 {
@@ -42,8 +42,6 @@ struct QueueConfig
 namespace pugi { class xml_node ;} ;
 class ClientTcpHandler ;
 typedef std::map<int64_t,SyncQueueData> QueueLogContainer ;
-typedef std::vector<std::string> QueueNameContainer ;
-typedef std::tr1::unordered_map<std::string,QueueNameContainer > VirtualQueueContainer ;
 
 class QueueServer: public framework::application ,public ServerObserver
 {
@@ -156,7 +154,6 @@ private:
 
 };
 
-int parse_request(const char* begin,const char* end,Json::Value& request) ;
 
 DECLARE_APPLICATION_INSTANCE(QueueServer) ;
 

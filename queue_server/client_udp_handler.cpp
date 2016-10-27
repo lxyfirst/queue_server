@@ -6,7 +6,7 @@
 
 
 #include "client_udp_handler.h"
-#include "queue_server.h"
+#include "worker_util.h"
 #include "queue_processor.h"
 
 ClientUdpHandler::ClientUdpHandler()
@@ -32,15 +32,15 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
     char remote_host[16] = {0} ;
     framework::addr2str(remote_host,sizeof(remote_host),&p->addr) ;
 
-    debug_log_format(get_app().get_worker().logger(),"recv host:%s data:%s",remote_host,p->data) ;
+    debug_log_format(get_logger(),"recv host:%s data:%s",remote_host,p->data) ;
 
     int action = request[FIELD_ACTION].asInt() ;
-    if((!get_app().is_leader() ) && action < ACTION_LOCAL_START)
+    if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;
         source.is_tcp = 0 ;
         source.addr = p->addr ;
-        get_app().get_worker().forward_to_leader(source,p->data,p->data_size) ;
+        get_worker().forward_to_leader(source,p->data,p->data_size) ;
         return 0 ;
     }
 

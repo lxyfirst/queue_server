@@ -7,9 +7,9 @@
 
 #include "framework/string_util.h"
 #include "client_tcp_handler.h"
-#include "queue_server.h"
+#include "worker_util.h"
 #include "queue_processor.h"
-#include "worker.h"
+#include "public/message.h"
 
 using namespace framework ;
 
@@ -31,12 +31,12 @@ void ClientTcpHandler::on_timeout(timer_manager* manager)
     int idle_time = time(0)- m_last_time ;
     if(idle_time > IDLE_TIMEOUT )
     {
-        trace_log_format(get_app().get_worker().logger(),"timeout fd:%d",this->get_id().fd) ;
+        trace_log_format(get_logger(),"timeout fd:%d",this->get_id().fd) ;
         fini() ;
     }
     else
     {
-        get_app().get_worker().add_timer_after(&m_idle_timer,IDLE_TIMEOUT) ;
+        get_worker().add_timer_after(&m_idle_timer,IDLE_TIMEOUT) ;
     }
 }
 
@@ -44,7 +44,7 @@ void ClientTcpHandler::on_connected()
 {
     char addr[32] = {0};
     this->get_remote_addr(addr,sizeof(addr)-1) ;
-    debug_log_format(get_app().get_worker().logger(),
+    debug_log_format(get_logger(),
             "client connected  host:%s fd:%d",addr,this->get_id().fd) ;
 
     m_last_time = time(0) ;
@@ -118,9 +118,9 @@ int ClientTcpHandler::process_packet(const packet_info* pi)
     switch(pi->type)
     {
     case FORWARD_REQUEST:
-        return get_app().get_worker().process_forward_request(this,pi) ;
+        return get_worker().process_forward_request(this,pi) ;
     case FORWARD_RESPONSE:
-        return get_app().get_worker().process_forward_response(this,pi) ;
+        return get_worker().process_forward_response(this,pi) ;
     case JSON_PACKET_TYPE:
         return process_json_request(pi) ;
     case STATUS_REQUEST:
@@ -137,15 +137,15 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
 {
     Json::Value request ;
     if(parse_request(pi->data,pi->data + pi->size,request)!=0) return -1 ;
-    debug_log_format(get_app().get_worker().logger(),"recv data size:%d",pi->size) ;
+    debug_log_format(get_logger(),"recv data size:%d",pi->size) ;
 
     int action = request[FIELD_ACTION].asInt() ;
-    if((!get_app().is_leader() ) && action < ACTION_LOCAL_START)
+    if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;
         source.is_tcp = 1 ;
         source.id = this->get_id();
-        return get_app().get_worker().forward_to_leader(source,pi->data,pi->size) ;
+        return get_worker().forward_to_leader(source,pi->data,pi->size) ;
     }
 
     if(QueueProcessor::process(request)==0)
@@ -161,15 +161,15 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
 
 void ClientTcpHandler::on_disconnect(int error_type)
 {
-    get_app().get_worker().del_timer(&m_idle_timer) ;
+    get_worker().del_timer(&m_idle_timer) ;
 
-    debug_log_format(get_app().get_worker().logger(),
+    debug_log_format(get_logger(),
             "client closed error_type:%d fd:%d",error_type,this->get_id().fd);
 }
 
 void ClientTcpHandler::on_closed()
 {
-    get_app().get_worker().on_client_closed(this) ;
+    get_worker().on_client_closed(this) ;
     
 }
 

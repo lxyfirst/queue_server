@@ -5,7 +5,7 @@
 
 #include "framework/string_util.h"
 #include "queue.h"
-#include "queue_server.h"
+#include "worker_util.h"
 
 Queue::Queue(const string& name):m_name(name),m_seq_id(0),m_check_key(0)
 {
@@ -21,9 +21,9 @@ Queue::~Queue()
 int Queue::produce(const std::string& data,int delay,int ttl,int retry)
 {
 
-    if(m_message.size() > get_app().queue_size() )
+    if(m_message.size() > max_queue_size() )
     {
-        warn_log_format(get_app().get_worker().logger(),"queue full queue:%s delay:%d size:%d",
+        warn_log_format(get_logger(),"queue full queue:%s delay:%d size:%d",
                 m_name.c_str(),delay,data.size() ) ;
         return -1 ;
     }
@@ -32,12 +32,12 @@ int Queue::produce(const std::string& data,int delay,int ttl,int retry)
     if(message == NULL) return -1 ;
     if(message->data.size() > 1024)
     {
-        trace_log_format(get_app().get_worker().logger(),"produce message queue:%s id:%d size:%d",
+        trace_log_format(get_logger(),"produce message queue:%s id:%d size:%d",
             m_name.c_str(),message->id,message->data.size() ) ;
     }
     else
     {
-        trace_log_format(get_app().get_worker().logger(),"produce message queue:%s id:%d data:%s",
+        trace_log_format(get_logger(),"produce message queue:%s id:%d data:%s",
             m_name.c_str(),message->id,message->data.c_str() ) ;
     }
     //notify
@@ -52,7 +52,7 @@ int Queue::produce(const std::string& data,int delay,int ttl,int retry)
 
     sync_data->set_data(message->data);
 
-    if(get_app().send_event(sync_data)!=0) delete sync_data ;
+    if( notify_sync_event(sync_data)!=0) delete sync_data ;
 
     return message->id ;
 
@@ -99,7 +99,7 @@ int Queue::consume(string& data)
         if ( message == NULL) continue ;
 
         int msg_id = message->id ;
-        trace_log_format(get_app().get_worker().logger(),"consume message queue:%s id:%d",m_name.c_str(),msg_id) ;
+        trace_log_format(get_logger(),"consume message queue:%s id:%d",m_name.c_str(),msg_id) ;
 
         int retry_time = now + message->retry ;
         if(message->retry >0 && retry_time < message->ttl)
@@ -125,7 +125,7 @@ void Queue::erase(int id)
 {
     if(m_message.count(id) == 0 ) return ;
     m_message.erase(id) ;
-    trace_log_format(get_app().get_worker().logger(),"erase message queue:%s id:%d",m_name.c_str(),id) ;
+    trace_log_format(get_logger(),"erase message queue:%s id:%d",m_name.c_str(),id) ;
 
     //notify
     SyncQueueData* sync_data = new SyncQueueData;
@@ -133,7 +133,7 @@ void Queue::erase(int id)
     sync_data->set_op_type(POP_QUEUE_REQUEST) ;
     sync_data->set_message_id(id) ;
 
-    if(get_app().send_event(sync_data)!=0) delete sync_data ;
+    if(notify_sync_event(sync_data)!=0) delete sync_data ;
 
 }
 
@@ -143,19 +143,19 @@ int Queue::update(const SyncQueueData& sync_data)
 
     if(sync_data.op_type() == POP_QUEUE_REQUEST )
     {
-        trace_log_format(get_app().get_worker().logger(),"sync erase message queue:%s id:%d",m_name.c_str(),id ) ;
+        trace_log_format(get_logger(),"sync erase message queue:%s id:%d",m_name.c_str(),id ) ;
         m_message.erase(id) ;
     }
     else if ( sync_data.op_type() == PUSH_QUEUE_REQUEST )
     {
-        trace_log_format(get_app().get_worker().logger(),"sync produce message queue:%s id:%d size:%d",
+        trace_log_format(get_logger(),"sync produce message queue:%s id:%d size:%d",
                 m_name.c_str(),id, sync_data.data().size() ) ;
 
         //todo queue is full and update
-        int over_size = m_message.size() - get_app().queue_size();
+        int over_size = m_message.size() - max_queue_size();
         if(over_size >0 && over_size %10 == 1 )
         {
-            warn_log_format(get_app().get_worker().logger(),"update full queue:%s size:%d",
+            warn_log_format(get_logger(),"update full queue:%s size:%d",
                     m_name.c_str(),m_message.size() ) ;
         }
 
@@ -224,7 +224,7 @@ void Queue::on_timeout(framework::timer_manager* manager)
         if(message )
         {
             m_work_queue.insert(IndexData(it->first,it->second));
-            debug_log_format(get_app().get_worker().logger(),"retry message queue:%s id:%d",m_name.c_str(),it->second) ;
+            debug_log_format(get_logger(),"retry message queue:%s id:%d",m_name.c_str(),it->second) ;
         }
     }
 
@@ -234,7 +234,7 @@ void Queue::on_timeout(framework::timer_manager* manager)
 
     //todo remove expired message
 
-    get_app().add_timer_after(&m_timer,1000) ;
+    get_worker().add_timer_after(&m_timer,2) ;
 
 
 }
