@@ -57,9 +57,9 @@ void ClientTcpHandler::send_heartbeat()
     int now = time(0) ;
     if( now - m_last_time >= (IDLE_TIMEOUT >>1) )
     {
+        m_last_time = now ;
         SSStatusRequest heartbeat ;
         this->send(&heartbeat,0) ;
-        m_last_time = now ;
     }
 
 
@@ -152,7 +152,7 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
     {
         Json::FastWriter writer ;
         std::string data = writer.write(request) ;
-        this->send(data.data(),data.size(),0 ) ;
+        if( this->send(data.data(),data.size(),0 ) !=0 ) return -1 ;
     }
 
     return 0 ;

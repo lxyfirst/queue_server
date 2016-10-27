@@ -278,13 +278,15 @@ int Worker::process_forward_response(ClientTcpHandler* handler, const packet_inf
             ClientTcpHandler* client = dynamic_cast<ClientTcpHandler*>(m_reactor.get_handler(source->id.fd) ) ;
             if(client && source->id == client->get_id() )
             {
-                return client->send(data.c_str(),data.size(),0) ;
+                client->send(data.c_str(),data.size(),0) ;
+                return 0 ;
             }
 
         }
         else
         {
-            return m_udp_handler.send(&source->addr,data.c_str(),data.size()) ;
+            m_udp_handler.send(&source->addr,data.c_str(),data.size()) ;
+            return 0 ;
         }
     }
 

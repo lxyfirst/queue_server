@@ -104,8 +104,7 @@ int ServerHandler::process_register_request(const packet_info* pi)
 int ServerHandler::process_status_request(const packet_info* pi)
 {
     SSStatusResponse status_response ;
-    this->send(&status_response,0) ;
-    return 0 ;
+    return this->send(&status_response,0) ;
 
 }
 

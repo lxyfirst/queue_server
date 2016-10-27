@@ -395,7 +395,7 @@ int QueueServer::on_sync_queue_request(ServerHandler* handler,const framework::p
         response.head = request.head ;
         response.body.CopyFrom(it->second) ;
         response.body.set_last_trans_id(last_trans_id) ;
-        handler->send(&response,0) ;
+        if(handler->send(&response,0)!=0) return -1 ;
         if (it->second.trans_id() - last_trans_id > 1)
         {
             warn_log_format(m_logger,"sync skip trans_id %lld to %lld",last_trans_id,it->second.trans_id());

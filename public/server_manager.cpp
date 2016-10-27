@@ -104,7 +104,7 @@ int ServerManager::register_connection(int remote_server_id,ServerHandler* handl
 
 void ServerManager::free_connection(int remote_server_id,ServerHandler* handler)
 {
-    trace_log_format((*m_logger),"free connection remote_server_id:%#x",remote_server_id) ;
+    info_log_format((*m_logger),"free connection remote_server_id:%#x",remote_server_id) ;
     ServerContainer::iterator it = m_server_container.find(remote_server_id) ;
     if( (it != m_server_container.end() ) && (it->second == handler) )
     {
