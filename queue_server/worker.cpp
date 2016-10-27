@@ -178,10 +178,11 @@ void Worker::on_leader_change(void* data)
     if(get_app().is_leader() ) return ;
 
     const VoteData* leader_info = get_app().leader_vote_data();
-    if(leader_info == NULL ) return ;
+    if(leader_info == NULL || leader_info->host().size() < 1 || leader_info->port() < 1 ) return ;
 
     m_leader_handler.fini() ;
-    info_log_format(m_logger,"try connect to leader node_id:%d",leader_info->node_id() );
+    info_log_format(m_logger,"try connect to leader node_id:%d host:%s",
+            leader_info->node_id(),leader_info->host().c_str() );
     m_leader_handler.init(&m_reactor,leader_info->host().c_str(),leader_info->port() );
 
 }
