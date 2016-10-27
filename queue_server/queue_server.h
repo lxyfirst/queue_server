@@ -99,8 +99,9 @@ public:
 
     const QueueNameContainer* real_queue_name(const std::string& virtual_name)
     {
-        if( m_virtual_queue.count(virtual_name) <1 ) return NULL ;
-        return &m_virtual_queue[virtual_name] ;
+        VirtualQueueContainer& container = m_virtual_queue.active() ;
+        if( container.count(virtual_name) <1 ) return NULL ;
+        return &container[virtual_name] ;
     }
 
     Worker& get_worker() { return m_worker ; } ;
@@ -143,7 +144,7 @@ private:
 
     ServerInfoContainer m_cluster_info ;   // node list in cluster
     ServerInfo m_self_info ;               // self info in cluster
-    VirtualQueueContainer m_virtual_queue ;
+    framework::object_switcher<VirtualQueueContainer> m_virtual_queue ;
     QueueLogContainer m_queue_log ;
     AsyncProcessorManager m_processor_manager ;
     QueueConfig m_queue_config ;

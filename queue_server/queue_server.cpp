@@ -129,7 +129,8 @@ int QueueServer::load_reload_config(const pugi::xml_node& root)
     if(m_queue_config.queue_size < 128 || m_queue_config.log_size < 128 ) error_return(-1,"invalid size");
     if( m_queue_config.sync_rate < 1) error_return(-1,"invalid limit") ;
 
-    VirtualQueueContainer virtual_queue ;
+    VirtualQueueContainer& virtual_queue = m_virtual_queue.backup() ;
+    virtual_queue.clear() ;
     for(pugi::xml_node queue = root.child("virtual_queue");queue ; queue= queue.next_sibling("virtual_queue") )
     {
         const char* virtual_name = queue.attribute("name").value();
@@ -141,7 +142,7 @@ int QueueServer::load_reload_config(const pugi::xml_node& root)
             if(strlen(real_name) >0 ) name_list.push_back(real_name) ;
         }
     }
-    m_virtual_queue.swap(virtual_queue) ;
+    m_virtual_queue.switch_object() ;
 
     return 0 ;
 }
