@@ -39,13 +39,6 @@ struct QueueConfig
     int sync_rate ;
 };
 
-struct SourceData
-{
-    int is_tcp ;
-    framework::sa_in_t addr ;
-    framework::tcp_data_handler::connection_id id ;
-};
-
 namespace pugi { class xml_node ;} ;
 class ClientTcpHandler ;
 typedef std::map<int64_t,SyncQueueData> QueueLogContainer ;

@@ -220,7 +220,7 @@ void QueueServer::set_leader(const VoteData& vote_data)
 
     m_leader_vote_info.backup().CopyFrom(vote_data) ;
     m_leader_vote_info.switch_object() ;
-
+    m_worker.notify_leader_change() ;
     try_sync_queue() ;
 
     info_log_format(m_logger,"new leader node_id:%d",m_node_info.leader_id) ;
@@ -419,7 +419,7 @@ int QueueServer::on_sync_queue_response(ServerHandler* handler,const framework::
     if(m_self_vote_info.trans_id() == response.body.last_trans_id() )
     {
         //sync notify or response is continuous , update local queue and log
-        if(m_worker.send_sync_request(response.body) !=0 )
+        if(m_worker.notify_sync_request(response.body) !=0 )
         {
             warn_log_format(m_logger,"sync to queue failed");
             return -1 ;
@@ -565,7 +565,7 @@ int parse_request(const char* begin,const char* end,Json::Value& request)
     Json::Reader reader ;
     if(! reader.parse(begin,end,request,false) ) return -1 ;
     if(!request.isObject()) return -2 ;
-    if(!request["action"].isInt() ) return -3 ;
+    if(!request[FIELD_ACTION].isInt() ) return -3 ;
     return 0 ;
 
 }

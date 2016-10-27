@@ -34,6 +34,16 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
 
     debug_log_format(get_app().get_worker().logger(),"recv host:%s data:%s",remote_host,p->data) ;
 
+    int action = request[FIELD_ACTION].asInt() ;
+    if((!get_app().is_leader() ) && action < ACTION_LOCAL_START)
+    {
+        SourceData source ;
+        source.is_tcp = 0 ;
+        source.addr = p->addr ;
+        get_app().get_worker().forward_to_leader(source,p->data,p->data_size) ;
+        return 0 ;
+    }
+
     if( QueueProcessor::process(request) ==0)
     {
         Json::FastWriter writer ;

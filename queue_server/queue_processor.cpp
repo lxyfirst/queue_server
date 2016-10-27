@@ -47,7 +47,7 @@ int QueueProcessor::process(Value& request)
     if(!request[FIELD_ACTION].isInt() ) return -1 ;
     int action = request[FIELD_ACTION].asInt() ;
 
-    if((!get_app().is_leader() ) && action < ACTION_LOCAL_START) return redirect(request);
+    //if((!get_app().is_leader() ) && action < ACTION_LOCAL_START) return redirect(request);
 
     if(action == ACTION_LIST || action == ACTION_LOCAL_LIST ) return process_list(request) ;
 

@@ -11,11 +11,11 @@
 #include "queue_processor.h"
 #include "queue_server.h"
 
+using namespace framework ;
 
 Worker::Worker(framework::log_thread& logger):m_logger(logger)
 {
-
-
+    m_timer.set_owner(this) ;
 }
 
 Worker::~Worker()
@@ -49,6 +49,8 @@ int Worker::on_init()
         error_return(-1,"init client acceptor failed") ;
     }
 
+    add_timer_after(&m_timer,30) ;
+
     return 0;
 }
 
@@ -77,12 +79,31 @@ int Worker::on_client_connection(int fd,sa_in_t* addr)
 
 }
 
+void Worker::on_client_closed(ClientTcpHandler* client_handler)
+{
+    if(client_handler != &m_leader_handler)
+    {
+        get_app().get_worker().free_connection(client_handler);
+    }
+}
+
 void Worker::free_connection(ClientTcpHandler* client_handler)
 {
     m_client_pool.release(client_handler) ;
 
 }
 
+
+void Worker::on_timeout(framework::timer_manager* manager)
+{
+    add_timer_after(&m_timer,30) ;
+    if(m_leader_handler.is_closed())
+    {
+        this->on_leader_change(NULL) ;
+    }
+
+
+}
 
 void Worker::on_event(int64_t v)
 {
@@ -92,12 +113,11 @@ void Worker::on_event(int64_t v)
         switch(event_data.type)
         {
         case SYNC_QUEUE_REQUEST:
-        {
-            SyncQueueData* data = (SyncQueueData*)event_data.data;
-            process_sync_queue(*data) ;
-            delete data ;
+            on_sync_request(event_data.data);
             break ;
-        }
+        case VOTE_NOTIFY:
+            on_leader_change(event_data.data) ;
+            break ;
 
         }
 
@@ -114,19 +134,51 @@ void Worker::run_once()
 }
 
 
-int Worker::send_sync_request(const SyncQueueData& data)
+int Worker::notify_sync_request(const SyncQueueData& data)
 {
     SyncQueueData* tmp = new SyncQueueData ;
-    if(tmp == NULL) return -1 ;
+    if(tmp == NULL)
+    {
+        error_log_format(m_logger,"invalid sync queue event") ;
+        return -1 ;
+    }
 
     tmp->CopyFrom(data) ;
     if(send_event(SYNC_QUEUE_REQUEST,tmp)!=0)
     {
+        error_log_format(m_logger,"send event failed") ;
         delete tmp ;
         return -1 ;
     }
 
     return 0 ;
+
+}
+
+int Worker::notify_leader_change()
+{
+    return send_event(VOTE_NOTIFY,NULL) ;
+}
+
+void Worker::on_sync_request(void* data)
+{
+    SyncQueueData* sync_data = static_cast<SyncQueueData*>(data) ;
+    if(sync_data == NULL) return  ;
+    process_sync_queue(*sync_data) ;
+    delete sync_data ;
+
+}
+
+void Worker::on_leader_change(void* data)
+{
+    if(get_app().is_leader() ) return ;
+
+    const VoteData* leader_info = get_app().leader_vote_data();
+    if(leader_info == NULL ) return ;
+
+    m_leader_handler.fini() ;
+    info_log_format(m_logger,"try connect to leader node_id:%d",leader_info->node_id() );
+    m_leader_handler.init(&m_reactor,leader_info->host().c_str(),leader_info->port() );
 
 }
 
@@ -138,7 +190,6 @@ int Worker::send_event(int type,void* data)
     event_data.data = data ;
 
     int ret =  m_event_queue.push(event_data) ;
-
 
     if( ret !=0 ) return -1 ;
 
@@ -184,5 +235,68 @@ void Worker::list_queue(Value& queue_list)
     {
         if(it->second) queue_list[it->first] = it->second->size() ;
     }
+}
+
+int Worker::process_forward_request(ClientTcpHandler* handler,const packet_info* pi)
+{
+    if(!get_app().is_leader() ) return -1 ;
+    SSForwardRequest forward ;
+    if(forward.decode(pi->data,pi->size)!= pi->size) return -1 ;
+
+    Json::Value request ;
+    const char* begin =forward.body.data().c_str() ;
+    const char* end = begin + forward.body.data().length() ;
+    if(parse_request(begin,end,request)!=0) return -1 ;
+
+    if(QueueProcessor::process(request) !=0) return -1 ;
+
+    Json::FastWriter writer ;
+    SSForwardResponse response ;
+    response.body.Swap(&forward.body) ;
+    response.body.set_data( writer.write(request)) ;
+    return handler->send(&response,0) ;
+
+}
+
+int Worker::process_forward_response(ClientTcpHandler* handler, const packet_info* pi)
+{
+    SSForwardResponse forward ;
+    if(forward.decode(pi->data,pi->size)!= pi->size) return -1 ;
+
+    if(time(0) - forward.body.timestamp() < 30 &&
+            sizeof(SourceData) == forward.body.source().length() )
+    {
+        SourceData* source = (SourceData*)forward.body.source().data() ;
+        const std::string& data = forward.body.data() ;
+        if(source->is_tcp)
+        {
+            ClientTcpHandler* client = dynamic_cast<ClientTcpHandler*>(m_reactor.get_handler(source->id.fd) ) ;
+            if(client && source->id == client->get_id() )
+            {
+                return client->send(data.c_str(),data.size(),0) ;
+            }
+
+        }
+        else
+        {
+            return m_udp_handler.send(&source->addr,data.c_str(),data.size()) ;
+        }
+    }
+
+    trace_log_format(m_logger,"drop response") ;
+
+    return 0 ;
+}
+
+int Worker::forward_to_leader(const SourceData& source,const char* data,int size)
+{
+    SSForwardRequest forward ;
+    forward.body.set_timestamp(time(0)) ;
+    forward.body.set_data(data,size);
+
+    forward.body.set_source((const char*)&source,sizeof(source)) ;
+
+    return m_leader_handler.send(&forward,0);
+
 }
 

@@ -30,13 +30,19 @@ using std::string ;
 
 typedef framework::object_pool<ClientTcpHandler> ClientPool ;
 
-typedef struct
+struct LocalEventData
 {
     int type;
     int timestamp ;
     void* data ;
-} LocalEventData ;
+}  ;
 
+struct SourceData
+{
+    int is_tcp ;
+    framework::sa_in_t addr ;
+    framework::tcp_data_handler::connection_id id ;
+};
 
 typedef framework::circular_queue<LocalEventData> EventQueue ;
 
@@ -47,18 +53,30 @@ public:
     virtual ~Worker();
 
     int on_client_connection(int fd,sa_in_t* addr);
+    void on_client_closed(ClientTcpHandler* client_handler) ;
     void free_connection(ClientTcpHandler* client_handler);
 
-    int send_sync_request(const SyncQueueData& data) ;
+    //notify event
+    int notify_sync_request(const SyncQueueData& data) ;
+    int notify_leader_change() ;
 
     Queue* get_queue(const string& queue_name);
 
+    //notify callback
     void on_event(int64_t v) ;
+    void on_sync_request(void* data) ;
+    void on_leader_change(void* data) ;
+
+    //process forward packet
+    int process_forward_request(ClientTcpHandler* handler,const framework::packet_info* pi) ;
+    int process_forward_response(ClientTcpHandler* handler,const framework::packet_info* pi) ;
+    int forward_to_leader(const SourceData& source,const char* data,int size) ;
 
     framework::log_thread& logger() { return m_logger ; } ;
 
     int add_timer_after(framework::base_timer* timer,int sencods) ;
     void del_timer(framework::base_timer* timer) ;
+    void on_timeout(framework::timer_manager* manager) ;
 
     void list_queue(Json::Value& queue_list) ;
 protected:
@@ -70,6 +88,7 @@ protected:
 
     int send_event(int type,void* data) ;
 private:
+    framework::template_timer<Worker> m_timer ;
     framework::log_thread& m_logger ;
     framework::epoll_reactor m_reactor ;
     framework::timer_manager m_timer_engine ;
@@ -78,6 +97,7 @@ private:
 
     QueueManager m_queue_manager ;
     ClientUdpHandler m_udp_handler ;
+    ClientTcpHandler m_leader_handler ;
     framework::tcp_acceptor m_client_acceptor ;
     ClientPool m_client_pool ;
 
