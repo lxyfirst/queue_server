@@ -49,7 +49,7 @@ int Worker::on_init()
         error_return(-1,"init client acceptor failed") ;
     }
 
-    add_timer_after(&m_timer,30) ;
+    on_timeout(NULL) ;
 
     return 0;
 }
@@ -96,10 +96,14 @@ void Worker::free_connection(ClientTcpHandler* client_handler)
 
 void Worker::on_timeout(framework::timer_manager* manager)
 {
-    add_timer_after(&m_timer,30) ;
+    add_timer_after(&m_timer,10) ;
     if(m_leader_handler.is_closed())
     {
         this->on_leader_change(NULL) ;
+    }
+    else
+    {
+        m_leader_handler.send_heartbeat() ;
     }
 
 

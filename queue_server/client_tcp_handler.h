@@ -19,10 +19,12 @@ public:
     ClientTcpHandler();
     virtual ~ClientTcpHandler();
     enum { JSON_PACKET_TYPE = 1 } ;
+    enum { IDLE_TIMEOUT  = 30 };
 public:
     
     void on_timeout(framework::timer_manager* manager) ;
 
+    void send_heartbeat() ;
 protected:
     int get_packet_info(const char* data,int size,framework::packet_info* pi) ;
     
@@ -35,7 +37,7 @@ protected:
     
     void on_connected() ;
 
-    void send_heartbeat() ;
+
     int on_heartbeat(const framework::packet_info* pi);
 
 private:

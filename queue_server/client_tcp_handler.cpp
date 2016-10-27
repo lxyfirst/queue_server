@@ -29,17 +29,15 @@ ClientTcpHandler::~ClientTcpHandler()
 void ClientTcpHandler::on_timeout(timer_manager* manager)
 {
     int idle_time = time(0)- m_last_time ;
-    if(idle_time > 60)
+    if(idle_time > IDLE_TIMEOUT )
     {
         trace_log_format(get_app().get_worker().logger(),"timeout fd:%d",this->get_id().fd) ;
         fini() ;
     }
-    else if(idle_time > 20)
+    else
     {
-        send_heartbeat() ;
+        get_app().get_worker().add_timer_after(&m_idle_timer,IDLE_TIMEOUT) ;
     }
-
-    get_app().get_worker().add_timer_after(&m_idle_timer,30) ;
 }
 
 void ClientTcpHandler::on_connected()
@@ -50,27 +48,34 @@ void ClientTcpHandler::on_connected()
             "client connected  host:%s fd:%d",addr,this->get_id().fd) ;
 
     m_last_time = time(0) ;
-    get_app().get_worker().add_timer_after(&m_idle_timer,30) ;
+    on_timeout(NULL) ;
 
 }
 
 void ClientTcpHandler::send_heartbeat()
 {
-    SSStatusRequest heartbeat ;
-    this->send(&heartbeat,0) ;
+    int now = time(0) ;
+    if( now - m_last_time >= (IDLE_TIMEOUT >>1) )
+    {
+        SSStatusRequest heartbeat ;
+        this->send(&heartbeat,0) ;
+        m_last_time = now ;
+    }
+
 
 }
 
 int ClientTcpHandler::on_heartbeat(const framework::packet_info* pi)
 {
-    SSStatusResponse heartbeat ;
-    this->send(&heartbeat,0) ;
+    //SSStatusResponse heartbeat ;
+    //this->send(&heartbeat,0) ;
     return 0 ;
 }
 
 int ClientTcpHandler::get_packet_info(const char* data,int size,framework::packet_info* pi)
 {
-    if ( data[0] == '{' && size < 65535 )  //web socket
+    static const int MAX_SIZE = 40960 ;
+    if ( data[0] == '{' && size < MAX_SIZE )  //web socket
     {
         if( data[size-1] == '}')
         {
@@ -98,6 +103,8 @@ int ClientTcpHandler::get_packet_info(const char* data,int size,framework::packe
             pi->data = data ;
         }
     }
+
+    if( pi->size < 1 || pi->size > MAX_SIZE) return -1 ;
               
         
     return 0 ;
