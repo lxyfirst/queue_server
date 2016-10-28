@@ -224,9 +224,10 @@ void QueueServer::set_leader(const VoteData& vote_data)
     m_leader_vote_info.backup().CopyFrom(vote_data) ;
     m_leader_vote_info.switch_object() ;
     m_worker.notify_leader_change() ;
-    try_sync_queue() ;
 
     info_log_format(m_logger,"new leader node_id:%d",m_node_info.leader_id) ;
+
+    try_sync_queue() ;
 }
 
 ServerHandler* QueueServer::get_leader()
@@ -272,10 +273,13 @@ int QueueServer::on_server_connection(int fd,sa_in_t* addr)
 void QueueServer::on_server_opend(int remote_server_id)
 {
     check_leader() ;
+
+    /*
     if(m_node_info.node_type == get_node_type(remote_server_id) )
     {
         m_push_sync_set.insert(remote_server_id) ;
     }
+    */
 }
 
 void QueueServer::on_server_closed(int remote_server_id)
@@ -485,20 +489,19 @@ void QueueServer::try_sync_queue()
         ++m_sync_counter ;
     }
 
-    if(m_sync_counter > m_queue_config.sync_rate )
+    ServerHandler* handler = get_leader() ;
+    if(m_sync_counter > m_queue_config.sync_rate || handler == NULL)
     {
         //try after 200ms
         this->add_timer_after(&m_sync_timer,200) ;
         return ;
     }
 
-    ServerHandler* handler = get_leader() ;
     if(handler)
     {
         SSSyncQueueRequest request ;
         request.head.seq = SYNC_TYPE_PULL ;
         request.body.set_last_trans_id(m_self_vote_info.trans_id()) ;
-
         handler->send(&request,0) ;
     }
 
