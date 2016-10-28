@@ -129,8 +129,8 @@ int QueueServer::load_reload_config(const pugi::xml_node& root)
     if(m_queue_config.queue_size < 128 || m_queue_config.log_size < 128 ) error_return(-1,"invalid size");
     if( m_queue_config.sync_rate < 1) error_return(-1,"invalid limit") ;
 
-    VirtualQueueContainer& virtual_queue = m_virtual_queue.backup() ;
-    virtual_queue.clear() ;
+    VirtualQueueContainer virtual_queue  ;
+
     for(pugi::xml_node queue = root.child("virtual_queue");queue ; queue= queue.next_sibling("virtual_queue") )
     {
         const char* virtual_name = queue.attribute("name").value();
@@ -142,7 +142,9 @@ int QueueServer::load_reload_config(const pugi::xml_node& root)
             if(strlen(real_name) >0 ) name_list.push_back(real_name) ;
         }
     }
-    m_virtual_queue.switch_object() ;
+
+    m_worker.init(virtual_queue) ;
+
 
     return 0 ;
 }
@@ -270,10 +272,15 @@ int QueueServer::on_server_connection(int fd,sa_in_t* addr)
 void QueueServer::on_server_opend(int remote_server_id)
 {
     check_leader() ;
+    if(m_node_info.node_type == get_node_type(remote_server_id) )
+    {
+        m_push_sync_set.insert(remote_server_id) ;
+    }
 }
 
 void QueueServer::on_server_closed(int remote_server_id)
 {
+    m_push_sync_set.erase(remote_server_id) ;
     check_leader() ;
 }
 
@@ -386,7 +393,13 @@ int QueueServer::on_sync_queue_request(ServerHandler* handler,const framework::p
 
     int64_t last_trans_id = request.body.last_trans_id() ;
     debug_log_format(m_logger,"sync request last_trans_id:%lld",last_trans_id) ;
-    if(last_trans_id >= m_self_vote_info.trans_id() ) return 0 ;
+    if(last_trans_id >= m_self_vote_info.trans_id() )
+    {
+        //no data to sync , change to push mode
+        m_push_sync_set.insert(handler->remote_server_id()) ;
+        info_log_format(m_logger,"sync data finished server_id:%#x",handler->remote_server_id()) ;
+        return 0 ;
+    }
 
     QueueLogContainer::iterator it = m_queue_log.upper_bound(last_trans_id) ;
     if(it!=m_queue_log.end())
@@ -398,8 +411,15 @@ int QueueServer::on_sync_queue_request(ServerHandler* handler,const framework::p
         if(handler->send(&response,0)!=0) return -1 ;
         if (it->second.trans_id() - last_trans_id > 1)
         {
-            warn_log_format(m_logger,"sync skip trans_id %lld to %lld",last_trans_id,it->second.trans_id());
+            m_push_sync_set.erase(handler->remote_server_id()) ;
+            info_log_format(m_logger,"sync skip server_id:%#x trans_id %lld to %lld",
+                    handler->remote_server_id(),last_trans_id,it->second.trans_id());
         }
+    }
+    else
+    {
+        m_push_sync_set.insert(handler->remote_server_id()) ;
+        error_log_format(m_logger,"maybe it's a bug") ;
     }
 
     return 0 ;
@@ -435,11 +455,13 @@ int QueueServer::on_sync_queue_response(ServerHandler* handler,const framework::
     else if(m_self_vote_info.trans_id() < response.body.last_trans_id())
     {
         //sync notify not continus , ignore and try again
-        response.head.seq = 1 ;
+        response.head.seq = SYNC_TYPE_PULL ;
     }
 
     //try sync again
-    if(response.head.seq ==1) try_sync_queue() ;
+    //seq=1 means continuous sync or pull sync
+    //seq=0 means oneshot sync or push sync
+    if(response.head.seq == SYNC_TYPE_PULL) try_sync_queue() ;
 
 
     return 0 ;
@@ -474,7 +496,7 @@ void QueueServer::try_sync_queue()
     if(handler)
     {
         SSSyncQueueRequest request ;
-        request.head.seq = 1 ;
+        request.head.seq = SYNC_TYPE_PULL ;
         request.body.set_last_trans_id(m_self_vote_info.trans_id()) ;
 
         handler->send(&request,0) ;
@@ -512,9 +534,16 @@ void QueueServer::on_queue_log(SyncQueueData& sync_data)
     if(is_leader() )
     {
         SSSyncQueueResponse notify ;
-        notify.head.seq = 0 ;
+        notify.head.seq = SYNC_TYPE_PUSH ;
         notify.body.CopyFrom(log_data) ;
-        broadcast(&notify) ;
+        std::set<int>::iterator it = m_push_sync_set.begin();
+        while( it != m_push_sync_set.end() )
+        {
+            ServerHandler* handler = m_server_manager.get_server(*it) ;
+            ++it ;
+
+            handler->send(&notify,0) ;
+        }
     }
 
 }

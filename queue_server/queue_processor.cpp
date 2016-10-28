@@ -28,26 +28,13 @@ int QueueProcessor::fill_response(Value& request,int code,const char* reason)
     return 0 ;
 }
 
-int QueueProcessor::redirect(Value& request)
-{
-    const VoteData* leader_info = leader_vote_data();
-    if(leader_info == NULL ||  leader_info->port() < 1) return -1;
 
-    request.removeMember(FIELD_DATA) ;
-    request[FIELD_MASTER_HOST]= leader_info->host();
-    request[FIELD_MASTER_PORT]= leader_info->port();
-
-    fill_response(request,-2,"redirect") ;
-    return 0 ;
-}
 
 
 int QueueProcessor::process(Value& request)
 {
     if(!request[FIELD_ACTION].isInt() ) return -1 ;
     int action = request[FIELD_ACTION].asInt() ;
-
-    //if((!get_app().is_leader() ) && action < ACTION_LOCAL_START) return redirect(request);
 
     if(action == ACTION_LIST || action == ACTION_LOCAL_LIST ) return process_list(request) ;
 
@@ -56,7 +43,8 @@ int QueueProcessor::process(Value& request)
 
     if(action == ACTION_PRODUCE )
     {
-        const QueueNameContainer* queue_list = real_queue_name(queue_name) ;
+        const QueueNameContainer* queue_list = get_worker().real_queue_name(queue_name);
+
         if (queue_list)
         {
             for(int i = queue_list->size() -1 ; i >=0 ; --i)

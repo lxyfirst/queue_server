@@ -35,6 +35,21 @@ Worker::~Worker()
 
 }
 
+int Worker::init(VirtualQueueContainer& virtual_queue)
+{
+    if(this->is_run())
+    {
+        notify_queue_config(virtual_queue) ;
+    }
+    else
+    {
+        m_virtual_queue.swap(virtual_queue) ;
+    }
+
+    return 0 ;
+
+}
+
 
 int Worker::on_init()
 {
@@ -47,9 +62,11 @@ int Worker::on_init()
         error_return(-1,"init eventfd failed") ;
     }
 
-    const VoteData* self_info = self_vote_data() ;
-    const char* listen_host = self_info->host().c_str() ;
-    int listen_port = self_info->port() ;
+    VoteData self_info ;
+    get_self_vote_data(self_info) ;
+
+    const char* listen_host = self_info.host().c_str() ;
+    int listen_port = self_info.port() ;
     if(m_udp_handler.init(&m_reactor,listen_host,listen_port)!=0 )
     {
         error_return(-1,"init udp failed");
@@ -108,7 +125,8 @@ void Worker::free_connection(ClientTcpHandler* client_handler)
 
 void Worker::on_timeout(framework::timer_manager* manager)
 {
-    add_timer_after(&m_timer,10) ;
+    add_timer_after(&m_timer,30) ;
+
     if(m_leader_handler.is_closed())
     {
         this->on_leader_change(NULL) ;
@@ -134,7 +152,9 @@ void Worker::on_event(int64_t v)
         case VOTE_NOTIFY:
             on_leader_change(event_data.data) ;
             break ;
-
+        case CONFIG_DATA_REQUEST:
+            on_queue_config(event_data.data) ;
+            break ;
         }
 
 
@@ -162,13 +182,32 @@ int Worker::notify_sync_request(const SyncQueueData& data)
     tmp->CopyFrom(data) ;
     if(send_event(SYNC_QUEUE_REQUEST,tmp)!=0)
     {
-        error_log_format(m_logger,"send event failed") ;
+        error_log_format(m_logger,"sync queue failed") ;
         delete tmp ;
         return -1 ;
     }
 
     return 0 ;
 
+}
+
+int Worker::notify_queue_config(VirtualQueueContainer& virtual_queue)
+{
+    VirtualQueueContainer* data = new VirtualQueueContainer ;
+    if(data == NULL)
+    {
+        error_log_format(m_logger,"sync config failed") ;
+        return -1 ;
+    }
+    data->swap(virtual_queue) ;
+
+    if(send_event(CONFIG_DATA_REQUEST,data)!=0)
+    {
+        error_log_format(m_logger,"sync config failed") ;
+        delete data ;
+        return -1 ;
+    }
+    return 0 ;
 }
 
 int Worker::notify_leader_change()
@@ -179,23 +218,47 @@ int Worker::notify_leader_change()
 void Worker::on_sync_request(void* data)
 {
     SyncQueueData* sync_data = static_cast<SyncQueueData*>(data) ;
-    if(sync_data == NULL) return  ;
+    if(sync_data == NULL)
+    {
+        error_log_format(m_logger,"sync request failed") ;
+        return  ;
+    }
+
     process_sync_queue(*sync_data) ;
     delete sync_data ;
 
 }
 
+void Worker::on_queue_config(void* data)
+{
+    VirtualQueueContainer* virtual_queue = static_cast<VirtualQueueContainer*>(data) ;
+    if(virtual_queue == NULL)
+    {
+        error_log_format(m_logger,"sync config failed") ;
+    }
+    else
+    {
+        m_virtual_queue.swap(*virtual_queue) ;
+        delete virtual_queue ;
+        info_log_format(m_logger,"sync config success") ;
+    }
+}
+
 void Worker::on_leader_change(void* data)
 {
+    m_leader_handler.fini() ;
+
     if(is_leader() ) return ;
 
-    const VoteData* leader_info = leader_vote_data();
-    if(leader_info == NULL || leader_info->host().size() < 1 || leader_info->port() < 1 ) return ;
+    VoteData leader_info ;
+    get_leader_vote_data(leader_info);
 
-    m_leader_handler.fini() ;
-    info_log_format(m_logger,"try connect to leader node_id:%d host:%s",
-            leader_info->node_id(),leader_info->host().c_str() );
-    m_leader_handler.init(&m_reactor,leader_info->host().c_str(),leader_info->port() );
+    if(leader_info.node_id() <1 || leader_info.host().size() < 1 || leader_info.port() < 1 ) return ;
+
+    info_log_format(m_logger,"leader changed , try connect to leader node_id:%d host:%s",
+            leader_info.node_id(),leader_info.host().c_str() );
+
+    m_leader_handler.init(&m_reactor,leader_info.host().c_str(),leader_info.port() );
 
 }
 
@@ -236,6 +299,13 @@ Queue* Worker::get_queue(const string& queue_name)
     }
 
     return queue ;
+}
+
+const QueueNameContainer* Worker::real_queue_name(const std::string& virtual_name)
+{
+    VirtualQueueContainer::const_iterator it = m_virtual_queue.find(virtual_name);
+    if( it == m_virtual_queue.end() ) return NULL ;
+    return &it->second ;
 }
 
 

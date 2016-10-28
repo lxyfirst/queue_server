@@ -7,12 +7,9 @@
 
 #pragma once
 
-#include <set>
 #include <map>
-#include <list>
-#include <string>
-#include <tr1/unordered_map>
-#include <vector>
+#include <set>
+
 #include "framework/application.h"
 #include "framework/tcp_acceptor.h"
 #include "framework/day_roll_logger.h"
@@ -49,6 +46,12 @@ public:
     QueueServer();
     virtual ~QueueServer();
     
+    enum
+    {
+        SYNC_TYPE_PUSH = 0 ,  // oneshot sync
+        SYNC_TYPE_PULL = 1 ,  // continuous sync
+    };
+
 public:
 
     int on_server_connection(int fd,framework::sa_in_t* addr) ;
@@ -64,12 +67,14 @@ public:
 
     framework::day_roll_logger& logger() { return m_logger ; } ;
     
-    const VoteData& self_vote_data() { return m_self_vote_info ; } ;
-    const VoteData* leader_vote_data()
+    const VoteData& self_vote_data() const { return m_self_vote_info ; } ;
+
+    const VoteData& leader_vote_data()
     {
+        static VoteData empty_data ;
         const VoteData& vote_data = m_leader_vote_info.active() ;
-        if(m_node_info.leader_id <1) return NULL ;
-        return vote_data.node_id() == m_node_info.leader_id ? &vote_data : NULL ;
+        if(m_node_info.leader_id <1) return empty_data ;
+        return vote_data.node_id() == m_node_info.leader_id ? vote_data : empty_data ;
     }
 
     int majority_count() const { return (m_cluster_info.size()+1) >>1  ; } ;
@@ -94,13 +99,6 @@ public:
 
     int queue_size() const { return m_queue_config.queue_size ; } ;
     int log_size() const { return m_queue_config.log_size ; } ;
-
-    const QueueNameContainer* real_queue_name(const std::string& virtual_name)
-    {
-        VirtualQueueContainer& container = m_virtual_queue.active() ;
-        if( container.count(virtual_name) <1 ) return NULL ;
-        return &container[virtual_name] ;
-    }
 
     Worker& get_worker() { return m_worker ; } ;
     int send_event(SyncQueueData* data) ;
@@ -139,10 +137,10 @@ private:
     Worker m_worker ;
 
     ServerManager m_server_manager ;
-
+    std::set<int> m_push_sync_set ;
     ServerInfoContainer m_cluster_info ;   // node list in cluster
     ServerInfo m_self_info ;               // self info in cluster
-    framework::object_switcher<VirtualQueueContainer> m_virtual_queue ;
+
     QueueLogContainer m_queue_log ;
     AsyncProcessorManager m_processor_manager ;
     QueueConfig m_queue_config ;

@@ -8,6 +8,8 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include <tr1/unordered_map>
 
 #include "framework/thread.h"
 #include "framework/eventfd_handler.h"
@@ -26,7 +28,8 @@ using framework::eventfd_handler ;
 using framework::log_thread ;
 using framework::poll_reactor ;
 
-using std::string ;
+typedef std::vector<std::string> QueueNameContainer ;
+typedef std::tr1::unordered_map<std::string,QueueNameContainer > VirtualQueueContainer ;
 
 typedef framework::object_pool<ClientTcpHandler> ClientPool ;
 
@@ -52,20 +55,25 @@ public:
     Worker(framework::log_thread& logger);
     virtual ~Worker();
 
+    int init(VirtualQueueContainer& virtual_queue) ;
+
     int on_client_connection(int fd,sa_in_t* addr);
     void on_client_closed(ClientTcpHandler* client_handler) ;
     void free_connection(ClientTcpHandler* client_handler);
 
-    //notify event
+    //notify event , called by main thread
     int notify_sync_request(const SyncQueueData& data) ;
     int notify_leader_change() ;
+    int notify_queue_config(VirtualQueueContainer& virtual_queue) ;
 
     Queue* get_queue(const string& queue_name);
+    const QueueNameContainer* real_queue_name(const std::string& name);
 
     //notify callback
     void on_event(int64_t v) ;
     void on_sync_request(void* data) ;
     void on_leader_change(void* data) ;
+    void on_queue_config(void* data) ;
 
     //process forward packet
     int process_forward_request(ClientTcpHandler* handler,const framework::packet_info* pi) ;
@@ -79,6 +87,8 @@ public:
     void on_timeout(framework::timer_manager* manager) ;
 
     void list_queue(Json::Value& queue_list) ;
+
+
 protected:
     virtual int on_init() ;
     virtual void on_fini() ;
@@ -94,7 +104,7 @@ private:
     framework::timer_manager m_timer_engine ;
     framework::eventfd_handler m_event_handler ;
     EventQueue m_event_queue ;
-
+    VirtualQueueContainer m_virtual_queue ;
     QueueManager m_queue_manager ;
     ClientUdpHandler m_udp_handler ;
     ClientTcpHandler m_leader_handler ;

@@ -44,7 +44,6 @@ public:
     QueueProcessor();
     virtual ~QueueProcessor();
     static int fill_response(Value& request,int code=0,const char* reason = "") ;
-    static int redirect(Value& request) ;
     static int process(Value& request) ;
     static int process_produce(Value& request,Queue& queue);
     static int process_consume(Value& request,Queue& queue);

@@ -16,16 +16,16 @@ log_thread& get_logger()
     return get_worker().logger() ;
 }
 
-const VoteData* leader_vote_data() 
+VoteData& get_leader_vote_data(VoteData& data)
 {
-    return get_app().leader_vote_data() ;
-
+     data.CopyFrom(get_app().leader_vote_data()) ;
+     return data ;
 }
 
-const VoteData* self_vote_data() 
+VoteData& get_self_vote_data(VoteData& data)
 {
-    return &get_app().self_vote_data() ;
-
+    data.CopyFrom(get_app().self_vote_data() ) ;
+    return data ;
 }
 
 int max_queue_size() 
@@ -43,7 +43,3 @@ int notify_sync_event(SyncQueueData* data)
     return get_app().send_event(data) ;
 }
 
-const QueueNameContainer* real_queue_name(const std::string& name)
-{
-    return get_app().real_queue_name(name) ;
-}
