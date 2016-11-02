@@ -78,8 +78,6 @@ class ClientAsyncProcessor : public MajorityProcessor
 public:
     virtual ~ClientAsyncProcessor() { } ;
 
-    framework::tcp_data_handler* get_handler() ;
-
     framework::tcp_data_handler::connection_id conn_id ;
 };
 

@@ -101,17 +101,6 @@ void MajorityProcessor::on_timeout(timer_manager* manager)
 }
 
 
-tcp_data_handler* ClientAsyncProcessor::get_handler()
-{
-    tcp_data_handler* handler = (tcp_data_handler*)get_app().reactor().get_handler(conn_id.fd) ;
-    if(handler && conn_id == handler->get_id())
-    {
-        return handler ;
-    }
-
-    return NULL ;
-}
-
 int UdpAsyncProcessor::send_packet(framework::packet* p)
 {
     return this->handler->send(&this->addr,p) ;
