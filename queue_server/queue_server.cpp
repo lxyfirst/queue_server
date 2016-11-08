@@ -478,6 +478,12 @@ void QueueServer::on_sync_timeout(framework::timer_manager* manager)
 
 void QueueServer::try_sync_queue()
 {
+	if(is_leader() )
+	{
+		trace_log_format(m_logger,"this is leader node , stop sync queue") ;
+		return ;
+	}
+
     int now = time(0) ;
     if(m_sync_time != now)
     {
@@ -490,7 +496,7 @@ void QueueServer::try_sync_queue()
     }
 
     ServerHandler* handler = get_leader() ;
-    if(m_sync_counter > m_queue_config.sync_rate || handler == NULL)
+    if(m_sync_counter > m_queue_config.sync_rate)
     {
         //try after 200ms
         this->add_timer_after(&m_sync_timer,200) ;
