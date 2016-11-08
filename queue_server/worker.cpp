@@ -129,7 +129,7 @@ void Worker::on_timeout(framework::timer_manager* manager)
 
     if(m_leader_handler.is_closed())
     {
-        this->on_leader_change(NULL) ;
+        this->init_leader_handler() ;
     }
     else
     {
@@ -246,19 +246,27 @@ void Worker::on_queue_config(void* data)
 
 void Worker::on_leader_change(void* data)
 {
+	init_leader_handler() ;
+}
+
+int Worker::init_leader_handler()
+{
     m_leader_handler.fini() ;
 
-    if(is_leader() ) return ;
+    if(is_leader() ) return -1;
 
     VoteData leader_info ;
     get_leader_vote_data(leader_info);
 
-    if(leader_info.node_id() <1 || leader_info.host().size() < 1 || leader_info.port() < 1 ) return ;
+    if(leader_info.node_id() <1 || leader_info.host().size() < 1 || leader_info.port() < 1 )
+    {
+    	return -1;
+    }
 
-    info_log_format(m_logger,"leader changed , try connect to leader node_id:%d host:%s",
+    info_log_format(m_logger,"try connect to leader node_id:%d host:%s",
             leader_info.node_id(),leader_info.host().c_str() );
 
-    m_leader_handler.init(&m_reactor,leader_info.host().c_str(),leader_info.port() );
+    return m_leader_handler.init(&m_reactor,leader_info.host().c_str(),leader_info.port() );
 
 }
 

@@ -1,7 +1,7 @@
 /*
  * worker.h
  *
- *  Created on: 2015Äê10ÔÂ30ÈÕ
+ *  Created on: 2015ï¿½ï¿½10ï¿½ï¿½30ï¿½ï¿½
  *      Author: dell
  */
 
@@ -57,6 +57,7 @@ public:
 
     int init(VirtualQueueContainer& virtual_queue) ;
 
+    //tcp client connection callback
     int on_client_connection(int fd,sa_in_t* addr);
     void on_client_closed(ClientTcpHandler* client_handler) ;
     void free_connection(ClientTcpHandler* client_handler);
@@ -65,9 +66,6 @@ public:
     int notify_sync_request(const SyncQueueData& data) ;
     int notify_leader_change() ;
     int notify_queue_config(VirtualQueueContainer& virtual_queue) ;
-
-    Queue* get_queue(const string& queue_name);
-    const QueueNameContainer* real_queue_name(const std::string& name);
 
     //notify callback
     void on_event(int64_t v) ;
@@ -80,8 +78,11 @@ public:
     int process_forward_response(ClientTcpHandler* handler,const framework::packet_info* pi) ;
     int forward_to_leader(const SourceData& source,const char* data,int size) ;
 
+    Queue* get_queue(const string& queue_name);
+    const QueueNameContainer* real_queue_name(const std::string& name);
     framework::log_thread& logger() { return m_logger ; } ;
 
+    //timer api
     int add_timer_after(framework::base_timer* timer,int seconds) ;
     void del_timer(framework::base_timer* timer) ;
     void on_timeout(framework::timer_manager* manager) ;
@@ -94,9 +95,17 @@ protected:
     virtual void on_fini() ;
     virtual void run_once() ;
 
+    /**
+     * @brief process sync queue event
+     */
     void process_sync_queue(SyncQueueData& sync_data) ;
 
+    /**
+     * @brief send event to worker
+     */
     int send_event(int type,void* data) ;
+
+    int init_leader_handler() ;
 private:
     framework::template_timer<Worker> m_timer ;
     framework::log_thread& m_logger ;
