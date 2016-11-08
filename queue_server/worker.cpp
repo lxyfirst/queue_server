@@ -1,7 +1,7 @@
 /*
  * worker.cpp
  *
- *  Created on: 2015Äê10ÔÂ30ÈÕ
+ *  Created on: 2015ï¿½ï¿½10ï¿½ï¿½30ï¿½ï¿½
  *      Author: dell
  */
 
@@ -125,7 +125,7 @@ void Worker::free_connection(ClientTcpHandler* client_handler)
 
 void Worker::on_timeout(framework::timer_manager* manager)
 {
-    add_timer_after(&m_timer,30) ;
+    add_timer_after(&m_timer,(IDLE_TIMEOUT >>1)) ;
 
     if(m_leader_handler.is_closed())
     {
