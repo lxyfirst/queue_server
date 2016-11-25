@@ -52,5 +52,6 @@ public:
     static int process_config(Value& request,Queue& queue);
     static int process_clear(Value& request,Queue& queue);
     static int process_list(Value& request);
+    static void fill_server_info(Value& server_info);
 };
 

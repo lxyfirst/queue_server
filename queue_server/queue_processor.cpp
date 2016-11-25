@@ -1,7 +1,7 @@
 /*
  * queue_processor.cpp
  *
- *  Created on: 2015Äê10ÔÂ27ÈÕ
+ *  Created on: 2015ï¿½ï¿½10ï¿½ï¿½27ï¿½ï¿½
  *      Author: dell
  */
 
@@ -143,17 +143,21 @@ int QueueProcessor::process_confirm(Value& request,Queue& queue)
     return fill_response(request) ;
 }
 
+void QueueProcessor::fill_server_info(Value& server_info)
+{
+    VoteData leader_info ;
+    get_leader_vote_data(leader_info);
+    server_info["leader_node_id"] = leader_info.node_id() ;
+
+}
+
 int QueueProcessor::process_monitor(Value& request,Queue& queue)
 {
     request["size"] = queue.size() ;
     request["max_id"] = queue.max_id() ;
     request["wait_status"] = queue.wait_status() ;
     request["max_size"] = max_queue_size() ;
-    /*
-    Value server_info ;
-    get_app().server_info(server_info) ;
-    request["server_info"].swap(server_info) ;
-    */
+    fill_server_info(request) ;
 
     return fill_response(request) ;
 }
@@ -164,11 +168,7 @@ int QueueProcessor::process_list(Value& request)
     get_worker().list_queue(queue_list) ;
     request["queue_count"] = queue_list.size() ;
     request["queue_list"].swap(queue_list) ;
-    /*
-    Value server_info ;
-    get_app().server_info(server_info) ;
-    request["server_info"].swap(server_info) ;
-    */
+    fill_server_info(request) ;
 
     return fill_response(request) ;
 }

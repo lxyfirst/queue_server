@@ -40,7 +40,11 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
         SourceData source ;
         source.is_tcp = 0 ;
         source.addr = p->addr ;
-        get_worker().forward_to_leader(source,p->data,p->data_size) ;
+        if(get_worker().forward_to_leader(source,p->data,p->data_size)!=0 )
+        {
+        	this->send(&p->addr,"{}",2) ;
+        }
+
         return 0 ;
     }
 
