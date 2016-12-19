@@ -46,21 +46,21 @@ public:
     int max_id() const { return m_seq_id ; } ;
     int wait_status() const ;
     /*
-     * @brief ·¢²¼ÏûÏ¢
-     * @param request ÏûÏ¢¶ÔÏó
+     * @brief å‘å¸ƒæ¶ˆæ¯
+     * @param request æ¶ˆæ¯å¯¹è±¡
      * @return id or 0
      */
     int produce(const string& data,int delay,int ttl,int retry) ;
 
     /*
-     * @brief »ñÈ¡²¢ÒÆ³ı¿ÉÓÃÏûÏ¢£¬¿ÉÓÃÖ¸ÔÚÓĞĞ§ÆÚÄÚ,ÈôĞèÒªÈ·ÈÏÏûÏ¢£¬·ÅÈëÖØÊÔ¶ÓÁĞ
-     * @param data´æ´¢·µ»ØµÄÏûÏ¢¶ÔÏó
+     * @brief è·å–å¹¶ç§»é™¤å¯ç”¨æ¶ˆæ¯ï¼Œå¯ç”¨æŒ‡åœ¨æœ‰æ•ˆæœŸå†…,è‹¥éœ€è¦ç¡®è®¤æ¶ˆæ¯ï¼Œæ”¾å…¥é‡è¯•é˜Ÿåˆ—
+     * @param dataå­˜å‚¨è¿”å›çš„æ¶ˆæ¯å¯¹è±¡
      * @return id or 0
      */
     int consume(string& data);
 
     /*
-     * @brief É¾³ıÏûÏ¢
+     * @brief åˆ é™¤æ¶ˆæ¯
      */
     void erase(int id) ;
 

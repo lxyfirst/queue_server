@@ -328,7 +328,12 @@ void Worker::list_queue(Value& queue_list)
     QueueManager::iterator it = m_queue_manager.begin() ;
     for(; it!= m_queue_manager.end();++it)
     {
-        if(it->second) queue_list[it->first] = it->second->size() ;
+        if(it->second)
+        {
+            Value& value = queue_list[it->first] ;
+            value["size"] = it->second->size() ;
+            value["wait_status"] = it->second->wait_status() ;
+        }
     }
 }
 

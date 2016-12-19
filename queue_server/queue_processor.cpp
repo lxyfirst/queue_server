@@ -145,9 +145,12 @@ int QueueProcessor::process_confirm(Value& request,Queue& queue)
 
 void QueueProcessor::fill_server_info(Value& server_info)
 {
-    VoteData leader_info ;
+    VoteData leader_info , self_info ;
     get_leader_vote_data(leader_info);
     server_info["leader_node_id"] = leader_info.node_id() ;
+    get_self_vote_data(self_info) ;
+    server_info["node_id"] = self_info.node_id() ;
+    server_info["trans_id"] = (Json::Int64)self_info.trans_id() ;
 
 }
 
