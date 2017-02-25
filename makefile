@@ -2,6 +2,7 @@
 SUBDIRS=framework pugixml jsoncpp public queue_server
 
 all: 
+	make proto -C public 
 	@for DIR in $(SUBDIRS) ; do 	\
 		make all -C $$DIR ;         \
 	done
