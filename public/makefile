@@ -28,7 +28,7 @@ else
 CFLAGS += -g -DDEBUG 
 endif
 
-all: $(BINS) $(SO_LIB) $(STATIC_LIB) 
+all: proto $(BINS) $(SO_LIB) $(STATIC_LIB) 
 
 $(BINS): % : %.o $(LIB_OBJS) 
 	$(CC) $(CFLAGS) -o $@ $^  
