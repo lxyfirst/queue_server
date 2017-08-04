@@ -329,12 +329,6 @@ void QueueServer::on_server_opend(int remote_server_id)
 {
     check_leader() ;
 
-    /*
-    if(m_node_info.node_type == get_node_type(remote_server_id) )
-    {
-        m_push_sync_set.insert(remote_server_id) ;
-    }
-    */
 }
 
 void QueueServer::on_server_closed(int remote_server_id)
