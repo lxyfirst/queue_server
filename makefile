@@ -1,5 +1,5 @@
 
-SUBDIRS=framework pugixml jsoncpp public queue_server
+SUBDIRS=framework public queue_server
 
 all: 
 	make proto -C public 
