@@ -10,7 +10,7 @@ OBJS=$(SRCS:.cpp=.o)
 LIB_OBJS=$(patsubst %.cpp,%.o,$(LIB_SRCS)) 
 BINS=$(patsubst %.cpp,%.bin,$(BIN_SRCS))
 #BINS=test_server
-DEP_LIBS=  ../framework/libframework.a  ../pugixml/libpugixml.a ../public/libproto_message.a ../jsoncpp/libjsoncpp.a
+DEP_LIBS=  ../framework/libframework.a  ../public/libproto_message.a 
 
 LIB_NAME=
 SO_LIB=$(patsubst %,lib%.so,$(LIB_NAME))
@@ -18,11 +18,11 @@ STATIC_LIB=$(patsubst %,lib%.a,$(LIB_NAME))
 
 
 CC=clang++
-CFLAGS= -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC
+CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC
 #CFLAGS += -std=c++11
 #INC= -I${THRIFT_DIR} -I${BOOST_DIR}  -I. -I../public 
 INC= -I. -I../framework -I..
-LDFLAGS=-lprotobuf -lrt -lpthread
+LDFLAGS=-lprotobuf -lrt -lpthread -ltcmalloc
 
 ifeq ($(release), 1)
 CFLAGS += -O2 -DNDEBUG 
@@ -46,7 +46,7 @@ release: clean
 	@make release=1
 
 deploy: 
-	cp -f *.xml ../deploy/conf/
+	cp -f *.json ../deploy/conf/
 	cp -f $(BINS) ../deploy/bin/
 
 %.d : %.cpp

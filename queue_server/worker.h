@@ -22,6 +22,13 @@
 #include "client_udp_handler.h"
 #include "client_tcp_handler.h"
 
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+
+using rapidjson::Document ;
+using rapidjson::Value ;
+using rapidjson::StringBuffer;
+
 using framework::eventfd_handler ;
 using framework::log_thread ;
 using framework::poll_reactor ;
@@ -85,7 +92,7 @@ public:
     void del_timer(framework::base_timer* timer) ;
     void on_timeout(framework::timer_manager* manager) ;
 
-    void list_queue(Json::Value& queue_list) ;
+    void list_queue(Document& queue_list) ;
 
 
 protected:
@@ -120,5 +127,9 @@ private:
 
 };
 
-int parse_request(const char* begin,const char* end,Json::Value& request) ;
+//typedef std::vector<std::pair<std::string,int> > JsonFieldInfo ;
+typedef std::map<std::string,int > JsonFieldInfo ;
 
+bool json_check_field(const Value&json,const JsonFieldInfo& field_list) ;
+int json_parse_request(const char* begin,const char* end,Document& request) ;
+bool json_encode(const Value& json,StringBuffer& buffer) ;

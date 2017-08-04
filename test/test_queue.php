@@ -212,8 +212,7 @@ function bench_process($process,$count,$host_list)
 
 
 $host_list = array(
-    array('host'=>'192.168.40.51','port'=>2112), 
-    array('host'=>'192.168.40.51','port'=>2112), 
+    array('host'=>'127.0.0.1','port'=>1111), 
 ) ;
 
 //bench_process(4,10000,$host_list) ;
@@ -225,7 +224,7 @@ $station_id = "test" ;
 $queue_name = "task#${station_id}:order:event" ;
 $queue_name = 'test_queue' ;
 
-$client = new QueueClient($host_list,$queue_name,false) ;
+$client = new QueueClient($host_list,"test",false) ;
 var_dump($client->produce(array("title"=>$queue_name),time(),60,time()+3600  ) );
 var_dump($client->list_queue()) ;
 //$msg = $client->consume();

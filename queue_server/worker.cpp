@@ -11,16 +11,85 @@
 #include "queue_processor.h"
 #include "worker_util.h"
 #include "public/message.h"
+#include "rapidjson/writer.h"
 
 using namespace framework ;
 
-int parse_request(const char* begin,const char* end,Json::Value& request)
+int json_parse_request(const char* begin,const char* end,Document& request)
 {
-    Json::Reader reader ;
-    if(! reader.parse(begin,end,request,false) ) return -1 ;
-    if(!request.isObject()) return -2 ;
-    if(!request[FIELD_ACTION].isInt() ) return -3 ;
+    if(request.Parse(begin,end-begin).HasParseError()) return -1 ;
+
+    if(!request.IsObject()) return -2 ;
+    if(!(request.HasMember(FIELD_ACTION) && request[FIELD_ACTION].IsInt()) ) return -3 ;
     return 0 ;
+
+}
+
+bool json_encode(const Value& json,StringBuffer& buffer)
+{
+    rapidjson::Writer<StringBuffer> writer(buffer) ;
+    return json.Accept(writer) ;
+}
+
+bool json_check_field(const Value&json,const JsonFieldInfo& field_list)
+{
+    if(!json.IsObject()) return false ;
+
+    int matched = 0 ;
+    for(Value::ConstMemberIterator m = json.MemberBegin(); m != json.MemberEnd(); ++m)
+    {
+        JsonFieldInfo::const_iterator it = field_list.find(m->name.GetString()) ;
+        if(it == field_list.end()) continue ;
+        switch(it->second)
+        {
+        case rapidjson::kObjectType :
+            if(!m->value.IsObject()) return false ;
+            break ;
+        case rapidjson::kArrayType :
+            if(!m->value.IsArray()) return false ;
+            break ;
+        case rapidjson::kNumberType :
+            if(!m->value.IsNumber()) return false ;
+            break ;
+        case rapidjson::kStringType :
+            if(!m->value.IsString()) return false ;
+            break ;
+
+        }
+
+        matched+=1 ;
+        if(matched == field_list.size() ) return true ;
+
+
+    }
+
+    return false ;
+
+    /*
+    for(auto& field : field_list)
+    {
+        if(!json.HasMember(field.first)) return false ;
+        switch(field.second)
+        {
+        case rapidjson::kObjectType :
+            if(!json[field.first].IsObject()) return false ;
+            break ;
+        case rapidjson::kArrayType :
+            if(!json[field.first].IsArray()) return false ;
+            break ;
+        case rapidjson::kNumberType :
+            if(!json[field.first].IsNumber()) return false ;
+            break ;
+        case rapidjson::kStringType :
+            if(!json[field.first].IsString()) return false ;
+            break ;
+
+        }
+
+    }
+    return true ;
+    */
+
 
 }
 
@@ -323,17 +392,19 @@ void Worker::process_sync_queue(SyncQueueData& sync_data)
     if(queue) queue->update(sync_data) ;
 }
 
-void Worker::list_queue(Value& queue_list)
+void Worker::list_queue(Document& queue_list)
 {
-    QueueManager::iterator it = m_queue_manager.begin() ;
-    for(; it!= m_queue_manager.end();++it)
+    queue_list.SetArray() ;
+    for(auto& pair : m_queue_manager)
     {
-        if(it->second)
-        {
-            Value& value = queue_list[it->first] ;
-            value["size"] = it->second->size() ;
-            value["wait_status"] = it->second->wait_status() ;
-        }
+        if(pair.second == NULL) continue ;
+
+        Value value  ;
+        value.SetObject() ;
+        value.AddMember("name",pair.first,queue_list.GetAllocator()) ;
+        value.AddMember("size",pair.second->size(),queue_list.GetAllocator() ) ;
+        value.AddMember("wait_status",pair.second->wait_status(),queue_list.GetAllocator() ) ;
+        queue_list.PushBack(value,queue_list.GetAllocator() ) ;
     }
 }
 
@@ -343,17 +414,19 @@ int Worker::process_forward_request(ClientTcpHandler* handler,const packet_info*
     SSForwardRequest forward ;
     if(forward.decode(pi->data,pi->size)!= pi->size) return -1 ;
 
-    Json::Value request ;
+    Document request ;
     const char* begin =forward.body.data().c_str() ;
     const char* end = begin + forward.body.data().length() ;
-    if(parse_request(begin,end,request)!=0) return -1 ;
+    if(json_parse_request(begin,end,request)!=0) return -1 ;
 
     if(QueueProcessor::process(request) !=0) return -1 ;
 
-    Json::FastWriter writer ;
+    StringBuffer buffer ;
+    json_encode(request,buffer) ;
+
     SSForwardResponse response ;
     response.body.Swap(&forward.body) ;
-    response.body.set_data( writer.write(request)) ;
+    response.body.set_data( buffer.GetString(),buffer.GetSize() ) ;
     return handler->send(&response,0) ;
 
 }

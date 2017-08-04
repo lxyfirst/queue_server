@@ -5,10 +5,10 @@
  *      Author: lxyfirst@gmail.com
  */
 
-#include "pugixml/pugixml.hpp"
 #include "framework/system_util.h"
 #include "framework/time_util.h"
 #include "framework/member_function_bind.h"
+#include "framework/mmap_file.h"
 #include "public/message.h"
 
 #include "queue_server.h"
@@ -32,19 +32,21 @@ QueueServer::~QueueServer()
 int QueueServer::on_init()
 {
 
-    pugi::xml_document xml_config ;
-    if(!xml_config.load_file(config_file()))
-    {
-        error_return(-1,"load config failed") ;
-    }
-    pugi::xml_node root = xml_config.child("root") ;
-    if(!root) error_return(-1,"missing <root> node") ;
+    mmap_file mfile ;
+    if(mfile.load_file(config_file())!=0 ) error_return(-1,"load config failed") ;
 
-    if(load_reload_config(root)!=0) return -1 ;
+    Document config ;
+    if(config.Parse((const char*)mfile.file_data(),mfile.file_size()).HasParseError() ||
+            !config.IsObject() )
+    {
+        error_return(-1,"parse config failed") ;
+    }
+
+    if(load_reload_config(config)!=0) return -1 ;
 
     if(m_log_thread.start() !=0) error_return(-1,"init log thread failed") ;
 
-    if(load_cluster_config(root)!=0) return -1 ;
+    if(load_cluster_config(config)!=0) return -1 ;
     
     //init event queue
     if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
@@ -63,31 +65,48 @@ int QueueServer::on_init()
     return 0 ;
 }
 
-int QueueServer::load_cluster_config(const pugi::xml_node& root)
+int QueueServer::load_cluster_config(const Document& root)
 {
-    //load cluster config
-    pugi::xml_node node = root.child("cluster") ;
-    for (pugi::xml_node item = node.first_child(); item;item = item.next_sibling())
-    {
-        int node_id = item.attribute("id").as_int() ;
+    static const JsonFieldInfo cluster_field_list{
+        {"cluster_node_list",rapidjson::kArrayType},
+        {"node_type",rapidjson::kNumberType },
+        {"node_id",rapidjson::kNumberType },
+        {"host",rapidjson::kStringType},
+        {"port",rapidjson::kNumberType},
+    } ;
 
+    static const JsonFieldInfo node_field_list{
+        {"node_id",rapidjson::kNumberType },
+        {"host",rapidjson::kStringType},
+        {"port",rapidjson::kNumberType},
+
+    } ;
+
+    if(!json_check_field(root,cluster_field_list) ) error_return(-1,"missing or invalid field") ;
+    const Value& cluster_node_list = root["cluster_node_list"] ;
+
+    //load cluster config
+    for(int i = 0 ; i < cluster_node_list.Size();++i)
+    {
+        auto& node = cluster_node_list[i];
+        if(!json_check_field(node,node_field_list) ) error_return(-1,"missing or invalid field") ;
+        int node_id = node["node_id"].GetInt();
         ServerInfo& server_info =m_cluster_info[node_id] ;
         server_info.host[sizeof(server_info.host)-1] = '\0' ;
-        strncpy(server_info.host,item.attribute("host").value(),sizeof(server_info.host)-1 ) ;
+        strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
         server_info.node_id = node_id ;
-        server_info.port = item.attribute("port").as_int() ;
+        server_info.port = node["port"].GetInt() ;
         server_info.online_status = 1;
     }
 
     //load self node config
-    node = root.child("node_info") ;
-    m_node_info.node_type = node.attribute("node_type").as_int(0);
-    m_node_info.node_id = node.attribute("node_id").as_int();
+    m_node_info.node_type = root["node_type"].GetInt();
+    m_node_info.node_id = root["node_id"].GetInt() ;
     if(m_node_info.node_type <0 ) error_return(-1,"invalid gorup_type:%d",m_node_info.node_type);
     if(m_node_info.node_id <1 ) error_return(-1,"invalid node id:%d",m_node_info.node_id);
 
-    std::string client_host = node.attribute("host").as_string();
-    int client_port = node.attribute("port").as_int();
+    std::string client_host = root["host"].GetString() ;
+    int client_port = root["port"].GetInt() ;
 
     m_self_vote_info.set_node_id(m_node_info.node_id) ;
     m_self_vote_info.set_vote_id(0) ;
@@ -112,36 +131,70 @@ int QueueServer::load_cluster_config(const pugi::xml_node& root)
 
 }
 
-int QueueServer::load_reload_config(const pugi::xml_node& root)
+int QueueServer::load_reload_config(const Document& root)
 {
-    pugi::xml_node node = root.child("log") ;
-    if(m_logger.init(node.attribute("prefix").value(),node.attribute("level").as_int() ) !=0 )
+    static const JsonFieldInfo field_list{
+        {"log_prefix",rapidjson::kStringType},
+        {"log_level",rapidjson::kNumberType },
+        {"queue_size",rapidjson::kNumberType},
+        {"queue_log_size",rapidjson::kNumberType},
+        {"queue_sync_rate",rapidjson::kNumberType},
+        {"virtual_queue_list",rapidjson::kArrayType},
+
+    } ;
+
+    static const JsonFieldInfo virtual_field_list{
+        {"name",rapidjson::kStringType},
+        {"queue_list",rapidjson::kArrayType},
+
+    } ;
+
+
+    if(!json_check_field(root,field_list) ) error_return(-1,"missing or invalid field") ;
+
+    const Value& log_prefix = root["log_prefix"] ;
+    const Value& log_level = root["log_level"] ;
+
+    if(m_logger.init(log_prefix.GetString(),log_level.GetInt() ) !=0 )
     {
         error_return(-1,"init logger failed") ;
     }
 
-    m_log_thread.init(node.attribute("prefix").value(),node.attribute("level").as_int());
+    m_log_thread.init(log_prefix.GetString(),log_level.GetInt());
 
-    node = root.child("queue_config") ;
-    m_queue_config.queue_size = node.attribute("queue_size").as_int(10000);
-    m_queue_config.log_size = node.attribute("log_size").as_int(100000);
-    m_queue_config.sync_rate = node.attribute("sync_rate").as_int(1000);
+    const Value& queue_size = root["queue_size"] ;
+    const Value& queue_log_size = root["queue_log_size"] ;
+    const Value& queue_sync_rate = root["queue_sync_rate"] ;
+
+    m_queue_config.queue_size = queue_size.GetInt() ;
+    m_queue_config.log_size = queue_log_size.GetInt() ;
+    m_queue_config.sync_rate = queue_sync_rate.GetInt() ;
     if(m_queue_config.queue_size < 128 || m_queue_config.log_size < 128 ) error_return(-1,"invalid size");
     if( m_queue_config.sync_rate < 1) error_return(-1,"invalid limit") ;
 
     VirtualQueueContainer virtual_queue  ;
 
-    for(pugi::xml_node queue = root.child("virtual_queue");queue ; queue= queue.next_sibling("virtual_queue") )
+    const Value& virtual_list = root["virtual_queue_list"];
+
+    if(!virtual_list.IsArray()) error_return(-1,"invalid virtual_queue_list") ;
+    for(int i=0 ; i < virtual_list.Size() ;++i)
     {
-        const char* virtual_name = queue.attribute("name").value();
+        auto& vqueue = virtual_list[i];
+        if(!json_check_field(vqueue,virtual_field_list) ) error_return(-1,"missing or invalid field") ;
+        const char* virtual_name = vqueue["name"].GetString();
         if(strlen(virtual_name) < 1 ) continue ;
         QueueNameContainer& name_list = virtual_queue[virtual_name];
-        for (pugi::xml_node item = queue.first_child(); item;item = item.next_sibling())
+        auto& rqueue_list = vqueue["queue_list"] ;
+        for(int j=0 ; j < rqueue_list.Size();++j)
         {
-            const char* real_name =item.attribute("name").value() ;
+            auto& name_value = rqueue_list[j] ;
+            if(!name_value.IsString()) continue ;
+            const char* real_name = name_value.GetString();
             if(strlen(real_name) >0 ) name_list.push_back(real_name) ;
         }
+
     }
+
 
     m_worker.init(virtual_queue) ;
 
@@ -151,16 +204,18 @@ int QueueServer::load_reload_config(const pugi::xml_node& root)
 
 int QueueServer::on_reload()
 {
-    pugi::xml_document xml_config ;
-    if(!xml_config.load_file(config_file()))
+    mmap_file mfile ;
+    if(mfile.load_file(config_file())!=0 ) error_return(-1,"load config failed") ;
+
+    Document config ;
+    if(config.Parse((const char*)mfile.file_data(),mfile.file_size()).HasParseError() ||
+            !config.IsObject() )
     {
-        error_return(-1,"load config failed") ;
+        error_return(-1,"parse config failed") ;
     }
-    pugi::xml_node root = xml_config.child("root") ;
-    if(!root) error_return(-1,"missing <root> node") ;
 
     m_logger.fini() ;
-    load_reload_config(root) ;
+    load_reload_config(config) ;
 
     info_log_string(m_logger,"system reload success") ;
     return 0 ;
@@ -274,12 +329,6 @@ void QueueServer::on_server_opend(int remote_server_id)
 {
     check_leader() ;
 
-    /*
-    if(m_node_info.node_type == get_node_type(remote_server_id) )
-    {
-        m_push_sync_set.insert(remote_server_id) ;
-    }
-    */
 }
 
 void QueueServer::on_server_closed(int remote_server_id)
@@ -588,19 +637,6 @@ void QueueServer::on_event(int64_t v)
 
 
 
-void QueueServer::server_info(Json::Value& info)
-{
-    info["log_size"] = (int)m_queue_log.size() ;
-    info["max_log_size"] = get_app().log_size() ;
-    info["leader_id"] = m_node_info.leader_id ;
-    info["node_id"] = m_node_info.node_id ;
-    info["trans_id"] = (Json::Int64)m_self_vote_info.trans_id() ;
-
-
-}
-
-
-IMPLEMENT_APPLICATION_INSTANCE(QueueServer) ;
-IMPLEMENT_MAIN() ;
+IMPLEMENT_MAIN(get_app()) ;
 
 

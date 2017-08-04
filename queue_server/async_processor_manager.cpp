@@ -101,14 +101,6 @@ void MajorityProcessor::on_timeout(timer_manager* manager)
 }
 
 
-int UdpAsyncProcessor::send_packet(framework::packet* p)
-{
-    return this->handler->send(&this->addr,p) ;
-}
-
-
-
-
 int StartVoteProcessor::init(void* data)
 {
     VoteData* body = (VoteData*)data ;

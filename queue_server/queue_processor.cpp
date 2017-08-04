@@ -21,25 +21,29 @@ QueueProcessor::~QueueProcessor()
 
 }
 
-int QueueProcessor::fill_response(Value& request,int code,const char* reason)
+int QueueProcessor::fill_response(Document& request,int code,const char* reason)
 {
-    request[FIELD_CODE] = code ;
-    if(code !=0) request[FIELD_REASON] = reason ;
+    request.AddMember(FIELD_CODE,code,request.GetAllocator() );
+
+    if(code !=0)
+    {
+        rapidjson::Value value(reason,strlen(reason)) ;
+        request.AddMember("reason",value,request.GetAllocator() ) ;
+    }
     return 0 ;
 }
 
 
 
 
-int QueueProcessor::process(Value& request)
+int QueueProcessor::process(Document& request)
 {
-    if(!request[FIELD_ACTION].isInt() ) return -1 ;
-    int action = request[FIELD_ACTION].asInt() ;
+    int action = request[FIELD_ACTION].GetInt() ;
 
     if(action == ACTION_LIST || action == ACTION_LOCAL_LIST ) return process_list(request) ;
 
-    if(!request[FIELD_QUEUE].isString()) return -1 ;
-    std::string queue_name = request[FIELD_QUEUE].asString() ;
+    if(!(request.HasMember(FIELD_QUEUE) && request[FIELD_QUEUE].IsString())) return -1 ;
+    std::string queue_name = request[FIELD_QUEUE].GetString() ;
 
     if(action == ACTION_PRODUCE )
     {
@@ -47,10 +51,11 @@ int QueueProcessor::process(Value& request)
 
         if (queue_list)
         {
-            for(int i = queue_list->size() -1 ; i >=0 ; --i)
+
+            for(auto& name : *queue_list)
             {
-                Queue* queue = get_worker().get_queue((*queue_list)[i]) ;
-                if(queue) process_produce(request,*queue) ;
+                Queue* queue = get_worker().get_queue(name) ;
+                if(queue)  process_produce(request,*queue) ;
             }
 
         }
@@ -60,10 +65,10 @@ int QueueProcessor::process(Value& request)
             if(queue) process_produce(request,*queue) ;
         }
 
-        request.removeMember(FIELD_DATA) ;
-        request.removeMember(FIELD_DELAY) ;
-        request.removeMember(FIELD_TTL) ;
-        request.removeMember(FIELD_RETRY) ;
+        request.RemoveMember(FIELD_DATA) ;
+        request.RemoveMember(FIELD_DELAY) ;
+        request.RemoveMember(FIELD_TTL) ;
+        request.RemoveMember(FIELD_RETRY) ;
         return 0 ;
     }
 
@@ -89,29 +94,36 @@ int QueueProcessor::process(Value& request)
 
     return 0 ;
 }
-int QueueProcessor::process_produce(Value& request,Queue& queue)
-{
-    if(!request[FIELD_DATA].isString()) return -1 ;
 
-    int now = time(0) ;
-    int delay =  request[FIELD_DELAY].isInt() ?  request[FIELD_DELAY].asInt() : now ;
-    int ttl = request[FIELD_TTL].isInt() ?  request[FIELD_TTL].asInt() : now + 86400 ;
+static const JsonFieldInfo PRODUCE_FILED_LIST{
+    {FIELD_DATA,rapidjson::kStringType},
+    {FIELD_DELAY,rapidjson::kNumberType },
+    {FIELD_TTL,rapidjson::kNumberType},
+    {FIELD_RETRY,rapidjson::kNumberType},
+
+
+} ;
+
+int QueueProcessor::process_produce(Document& request,Queue& queue)
+{
+    if(!json_check_field(request,PRODUCE_FILED_LIST)) return -1 ;
+
+
+    int delay =  request[FIELD_DELAY].GetInt() ;
+    //int now = time(0) ;
+    //if(delay < now ) delay = now -1 ;
+
+    int ttl = request[FIELD_TTL].GetInt() ;
     if( delay >= ttl ) return -1 ;
 
-    int retry = request[FIELD_RETRY].isInt() ?  request[FIELD_RETRY].asInt() : 0 ;
+    int retry = request[FIELD_RETRY].GetInt() ;
     if(retry < 0 ) return -1 ;
 
-    int msg_id = queue.produce(request[FIELD_DATA].asString(),delay,ttl,retry) ;
-
-//    request.removeMember(FIELD_DATA) ;
-//    request.removeMember(FIELD_DELAY) ;
-//    request.removeMember(FIELD_TTL) ;
-//    request.removeMember(FIELD_RETRY) ;
-
+    int msg_id = queue.produce(request[FIELD_DATA].GetString(),delay,ttl,retry) ;
 
     if(msg_id >0)
     {
-        request[FIELD_MSG_ID] = msg_id ;
+        request.AddMember(FIELD_MSG_ID,msg_id,request.GetAllocator()) ;
         fill_response(request) ;
     }
     else
@@ -122,66 +134,72 @@ int QueueProcessor::process_produce(Value& request,Queue& queue)
     return 0 ;
 }
 
-int QueueProcessor::process_consume(Value& request,Queue& queue)
+int QueueProcessor::process_consume(Document& request,Queue& queue)
 {
     std::string data ;
     int msg_id = queue.consume(data) ;
     if(msg_id >0)
     {
-        request[FIELD_MSG_ID] = msg_id ;
-        request[FIELD_DATA] = data ;
+        request.AddMember("msg_id",msg_id,request.GetAllocator()) ;
+        request.AddMember("data",data,request.GetAllocator()) ;
     }
 
     return fill_response(request) ;
 }
 
-int QueueProcessor::process_confirm(Value& request,Queue& queue)
+int QueueProcessor::process_confirm(Document& request,Queue& queue)
 {
-    int msg_id = request[FIELD_MSG_ID].asInt() ;
-    queue.erase(msg_id) ;
+    if(request.HasMember("msg_id") && request["msg_id"].IsInt())
+    {
+        int msg_id = request["msg_id"].GetInt() ;
+        queue.erase(msg_id) ;
+    }
 
     return fill_response(request) ;
 }
 
-void QueueProcessor::fill_server_info(Value& server_info)
+void QueueProcessor::fill_server_info(Document& server_info)
 {
     VoteData leader_info , self_info ;
     get_leader_vote_data(leader_info);
-    server_info["leader_node_id"] = leader_info.node_id() ;
+    server_info.AddMember("leader_node_id",leader_info.node_id(),server_info.GetAllocator()) ;
+
     get_self_vote_data(self_info) ;
-    server_info["node_id"] = self_info.node_id() ;
-    server_info["trans_id"] = (Json::Int64)self_info.trans_id() ;
+    server_info.AddMember("node_id", self_info.node_id(),server_info.GetAllocator()) ;
+    server_info.AddMember("trans_id",self_info.trans_id(),server_info.GetAllocator()) ;
 
 }
 
-int QueueProcessor::process_monitor(Value& request,Queue& queue)
+int QueueProcessor::process_monitor(Document& request,Queue& queue)
 {
-    request["size"] = queue.size() ;
-    request["max_id"] = queue.max_id() ;
-    request["wait_status"] = queue.wait_status() ;
-    request["max_size"] = max_queue_size() ;
+    request.AddMember("size",queue.size(),request.GetAllocator()) ;
+    request.AddMember("max_id",queue.max_id(),request.GetAllocator()) ;
+    request.AddMember("wait_status",queue.wait_status(),request.GetAllocator()) ;
+
     fill_server_info(request) ;
 
     return fill_response(request) ;
 }
 
-int QueueProcessor::process_list(Value& request)
+int QueueProcessor::process_list(Document& request)
 {
-    Value queue_list ;
-    get_worker().list_queue(queue_list) ;
-    request["queue_count"] = queue_list.size() ;
-    request["queue_list"].swap(queue_list) ;
+    rapidjson::Document queue_list ;
+    get_worker().list_queue(queue_list ) ;
+
+    request.AddMember("queue_count",queue_list.Size(),request.GetAllocator()) ;
+    request.AddMember("queue_list",queue_list,request.GetAllocator()) ;
+
     fill_server_info(request) ;
 
     return fill_response(request) ;
 }
 
-int QueueProcessor::process_config(Value& request,Queue& queue)
+int QueueProcessor::process_config(Document& request,Queue& queue)
 {
     return fill_response(request,-1,"not support") ;
 }
 
-int QueueProcessor::process_clear(Value& request,Queue& queue)
+int QueueProcessor::process_clear(Document& request,Queue& queue)
 {
     //queue.clear() ;
     return fill_response(request,-1,"not support") ;

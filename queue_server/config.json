@@ -1,6 +1,6 @@
 {
     "log_prefix" : "queue_server" , 
-    "log_level" :3 ,
+    "log_level" :5 ,
 
     "node_type" :10 , 
     "node_id" :1 ,

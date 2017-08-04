@@ -10,7 +10,6 @@
 #include <map>
 #include <list>
 #include <tr1/unordered_map>
-#include "jsoncpp/json.h"
 #include "framework/timer_manager.h"
 #include "public/system.pb.h"
 
