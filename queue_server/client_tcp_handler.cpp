@@ -135,11 +135,11 @@ int ClientTcpHandler::process_packet(const packet_info* pi)
 
 int ClientTcpHandler::process_json_request(const packet_info* pi)
 {
-    Json::Value request ;
-    if(parse_request(pi->data,pi->data + pi->size,request)!=0) return -1 ;
+    Document request ;
+    if(json_parse_request(pi->data,pi->data + pi->size,request)!=0) return -1 ;
     debug_log_format(get_logger(),"recv data size:%d",pi->size) ;
 
-    int action = request[FIELD_ACTION].asInt() ;
+    int action = request[FIELD_ACTION].GetInt() ;
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;
@@ -150,9 +150,9 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
 
     if(QueueProcessor::process(request)==0)
     {
-        Json::FastWriter writer ;
-        std::string data = writer.write(request) ;
-        if( this->send(data.data(),data.size(),0 ) !=0 ) return -1 ;
+        StringBuffer buffer ;
+        json_encode(request,buffer) ;
+        if( this->send(buffer.GetString(),buffer.GetSize(),0 ) !=0 ) return -1 ;
     }
 
     return 0 ;

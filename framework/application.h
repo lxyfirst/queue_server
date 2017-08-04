@@ -166,20 +166,18 @@ private:
 
 };
 
-
+template<typename T> T& singleton()
+{
+    static T app ;
+    return app ;
+}
 
 
 }
 
-#define DECLARE_APPLICATION_INSTANCE(app_type)   \
-    app_type& get_app() ;
-#define IMPLEMENT_APPLICATION_INSTANCE(app_type) \
-    app_type& get_app(){ static app_type app ; return app ; }
-
-#define IMPLEMENT_MAIN()      \
-    void sig_handler(int signo){get_app().send_signal(signo);}      \
+#define IMPLEMENT_MAIN(app_instance)      \
+    static void sig_handler(int signo){app_instance.send_signal(signo);}      \
     int main(int argc,char** argv){                 \
-        get_app() ;                                 \
         signal(SIGINT,sig_handler) ;               \
         signal(SIGTERM,sig_handler) ;              \
         signal(SIGQUIT,sig_handler) ;              \
@@ -188,5 +186,5 @@ private:
         signal(SIGPIPE, SIG_IGN);         \
         signal(SIGALRM,SIG_IGN);          \
         signal(SIGHUP,SIG_IGN);           \
-        return get_app().start(argc,argv);}
+        return app_instance.start(argc,argv);}
 

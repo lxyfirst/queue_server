@@ -12,7 +12,33 @@
 #include <map>
 #include <set>
 #include "server_handler.h"
-#include "server_dispatcher.h"
+
+struct ServerInfo
+{
+    char host[24] ;
+    int port ;
+    int16_t node_id ;
+    int8_t online_status ;
+};
+
+
+inline int16_t get_server_id(int8_t node_type,uint8_t node_id)
+{
+    return ((int16_t)node_type << 8) | node_id ;
+}
+
+inline int8_t get_node_id(int16_t server_id)
+{
+    return server_id & 0xFF ;
+}
+
+inline int8_t get_node_type(int16_t server_id)
+{
+    return (server_id >>8) & 0xFF ;
+}
+
+typedef std::map<int,ServerInfo> ServerInfoContainer ;
+
 
 namespace framework
 {

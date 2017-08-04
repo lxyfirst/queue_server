@@ -148,14 +148,14 @@ int ServerManager::broadcast(int server_type,framework::packet* p)
 
 void ServerManager::check_server_connect(int server_type,const ServerInfoContainer& server_list)
 {
-    ServerInfoContainer::const_iterator it = server_list.begin() ;
-    for(it = server_list.begin();it!= server_list.end();++it)
+    for(auto& pair : server_list)
     {
-        int remote_server_id=get_server_id(server_type,it->first);
-        if(it->second.online_status && (m_local_server_id != remote_server_id) )
+        int remote_server_id=get_server_id(server_type,pair.first);
+        if(pair.second.online_status && (m_local_server_id != remote_server_id) )
         {
-            create_connection(it->second.host,it->second.port,remote_server_id);
+            create_connection(pair.second.host,pair.second.port,remote_server_id);
         }
     }
+
 
 }

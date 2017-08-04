@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include "jsoncpp/json.h"
-
-using Json::Value ;
+#include "worker_util.h"
 class Queue ;
 
 enum
@@ -26,32 +24,32 @@ enum
 
 };
 
-static const char* FIELD_CODE = "code" ;
-static const char* FIELD_REASON = "reason" ;
-static const char* FIELD_DATA = "data" ;
-static const char* FIELD_MASTER_PORT = "master_port" ;
-static const char* FIELD_MASTER_HOST = "master_host" ;
-static const char* FIELD_ACTION = "action" ;
-static const char* FIELD_QUEUE = "queue" ;
-static const char* FIELD_DELAY = "delay" ;
-static const char* FIELD_TTL = "ttl" ;
-static const char* FIELD_RETRY = "retry" ;
-static const char* FIELD_MSG_ID = "msg_id" ;
+static const char FIELD_CODE[] = "code" ;
+static const char FIELD_REASON[] = "reason" ;
+static const char FIELD_DATA[] = "data" ;
+static const char FIELD_MASTER_PORT[] = "master_port" ;
+static const char FIELD_MASTER_HOST[] = "master_host" ;
+static const char FIELD_ACTION[] = "action" ;
+static const char FIELD_QUEUE[] = "queue" ;
+static const char FIELD_DELAY[] = "delay" ;
+static const char FIELD_TTL[] = "ttl" ;
+static const char FIELD_RETRY[] = "retry" ;
+static const char FIELD_MSG_ID[] = "msg_id" ;
 
 class QueueProcessor
 {
 public:
     QueueProcessor();
     virtual ~QueueProcessor();
-    static int fill_response(Value& request,int code=0,const char* reason = "") ;
-    static int process(Value& request) ;
-    static int process_produce(Value& request,Queue& queue);
-    static int process_consume(Value& request,Queue& queue);
-    static int process_confirm(Value& request,Queue& queue);
-    static int process_monitor(Value& request,Queue& queue);
-    static int process_config(Value& request,Queue& queue);
-    static int process_clear(Value& request,Queue& queue);
-    static int process_list(Value& request);
-    static void fill_server_info(Value& server_info);
+    static int fill_response(Document& request,int code=0,const char* reason = "") ;
+    static int process(Document& request) ;
+    static int process_produce(Document& request,Queue& queue);
+    static int process_consume(Document& request,Queue& queue);
+    static int process_confirm(Document& request,Queue& queue);
+    static int process_monitor(Document& request,Queue& queue);
+    static int process_config(Document& request,Queue& queue);
+    static int process_clear(Document& request,Queue& queue);
+    static int process_list(Document& request);
+    static void fill_server_info(Document& server_info);
 };
 

@@ -6,7 +6,6 @@
 #pragma once
 
 #include "framework/udp_data_handler.h"
-#include "jsoncpp/json.h"
 
 using framework::sa_in_t ;
 using framework::udp_packet ;

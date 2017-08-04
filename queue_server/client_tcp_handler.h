@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include "jsoncpp/json.h"
 #include "framework/tcp_data_handler.h"
 #include "framework/timer_manager.h"
 

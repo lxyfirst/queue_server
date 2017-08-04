@@ -9,9 +9,7 @@
 #include "framework/timer_manager.h"
 #include "framework/packet.h"
 #include "framework/tcp_data_handler.h"
-#include "framework/udp_data_handler.h"
 #include "public/message.h"
-#include "jsoncpp/json.h"
 
 enum
 {
@@ -80,21 +78,6 @@ public:
 
     framework::tcp_data_handler::connection_id conn_id ;
 };
-
-class ClientUdpHandler ;
-
-class UdpAsyncProcessor : public MajorityProcessor
-{
-public:
-    virtual ~UdpAsyncProcessor() { } ;
-    int send_packet(framework::packet* p) ;
-
-    ClientUdpHandler* handler ;
-    framework::sa_in_t addr ;
-    Json::Value request ;
-};
-
-
 
 
 class StartVoteProcessor : public ClientAsyncProcessor

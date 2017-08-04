@@ -26,15 +26,15 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
 {
     if(p->data[0] != '{') return 0 ;
 
-    Json::Value request ;
-    if(parse_request(p->data,p->data + p->data_size,request)!=0) return 0 ;
+    Document request ;
+    if(json_parse_request(p->data,p->data + p->data_size,request)!=0) return 0 ;
 
     char remote_host[16] = {0} ;
     framework::addr2str(remote_host,sizeof(remote_host),&p->addr) ;
 
     debug_log_format(get_logger(),"recv host:%s data:%s",remote_host,p->data) ;
 
-    int action = request[FIELD_ACTION].asInt() ;
+    int action = request[FIELD_ACTION].GetInt() ;
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;
@@ -50,9 +50,9 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
 
     if( QueueProcessor::process(request) ==0)
     {
-        Json::FastWriter writer ;
-        std::string data = writer.write(request) ;
-        this->send(&p->addr,data.data(),data.size() ) ;
+        rapidjson::StringBuffer buffer ;
+        json_encode(request,buffer) ;
+        this->send(&p->addr,buffer.GetString(),buffer.GetSize() ) ;
     }
 
     return 0 ;

@@ -6,7 +6,6 @@
 #include "public/template_packet.h"
 
 #include "public/message.h"
-#include "public/server_dispatcher.h"
 
 #include "server_handler.h"
 #include "server_manager.h"

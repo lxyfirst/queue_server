@@ -13,8 +13,7 @@
 #include "framework/application.h"
 #include "framework/tcp_acceptor.h"
 #include "framework/day_roll_logger.h"
-
-#include "public/config_handler.h"
+#include "framework/object_switcher.h"
 #include "public/server_manager.h"
 #include "public/template_packet.h"
 
@@ -36,7 +35,6 @@ struct QueueConfig
     int sync_rate ;
 };
 
-namespace pugi { class xml_node ;} ;
 class ClientTcpHandler ;
 typedef std::map<int64_t,SyncQueueData> QueueLogContainer ;
 
@@ -94,17 +92,16 @@ public:
     void on_queue_log(SyncQueueData& log_data) ;
     void on_event(int64_t v) ;
 
-
-    void server_info(Json::Value& info) ;
-
     int queue_size() const { return m_queue_config.queue_size ; } ;
     int log_size() const { return m_queue_config.log_size ; } ;
 
     Worker& get_worker() { return m_worker ; } ;
     int send_event(SyncQueueData* data) ;
 protected:
-    int load_cluster_config(const pugi::xml_node& root) ;
-    int load_reload_config(const pugi::xml_node& root) ;
+    const char* version() { return "multi-thread version 1.0 compiled at " __TIME__ " "  __DATE__   ; } ;
+
+    int load_cluster_config(const Document& root) ;
+    int load_reload_config(const Document& root) ;
 
     int on_init() ;
 
@@ -152,6 +149,6 @@ private:
 
 };
 
+inline QueueServer& get_app() { return framework::singleton<QueueServer>() ; };
 
-DECLARE_APPLICATION_INSTANCE(QueueServer) ;
 
