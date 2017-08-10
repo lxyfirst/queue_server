@@ -78,32 +78,30 @@ total:10000 fail:0 min:0.000278 max:0.004305 avg:0.000584
 ### 配置项
   日志配置     
   ```
-  <log prefix="queue_server" level="5" />
-  ```
-  节点配置   
-  ```
-  <node_info node_type="10" node_id="1" host="0.0.0.0" port="1111" />  
-  ```
-  队列配置   
-  ```
-  <queue_config queue_size="10000"  log_size="100000"  sync_rate="3000" />  
-  ```
-  集群配置   
-  ```
-   <cluster>  
-       <node id="1" host="127.0.0.1" port="1101" />  
-       <node id="2" host="127.0.0.1" port="1102" />
-       <node id="3" host="127.0.0.1" port="1103" />
-   </cluster>
-   ```
+  {
+    "log_prefix" : "queue_server" , //日志文件前缀
+    "log_level" :3 , //日志级别
 
-   虚拟队列配置
-   ```   
-   <virtual_queue name="test">   
-       <queue name="test1" />   
-       <queue name="test2" />   
-   </virtual_queue>   
-   ```   
+    "node_type" :10 ,       //集群id
+    "node_id" :1 ,          //节点id 
+    "host" : "0.0.0.0",     //对外服务IP
+    "port" : 1111 ,         //对外服务端口
+
+    "queue_size":100000 ,      //每个队列长度
+    "queue_log_size":100000 ,  //队列日志总容量
+    "queue_sync_rate":3000  ,  //节点数据同步频率
+
+    "cluster_node_list" : [       //集群节点配置，id，内部服务ip和端口
+        {"node_id":1 , "host":"127.0.0.1", "port":1101 },
+        {"node_id":2 , "host":"127.0.0.1", "port":1102 },
+        {"node_id":3 , "host":"127.0.0.1", "port":1103 }
+    ],
+    "virtual_queue_list" :  [     //虚拟队列配置，虚拟队列名->真实队列列表
+        {"name":"test" , "queue_list" : ["test1","test2"] }      
+    ]
+
+  }
+  ```   
 
 ### 接口
  数据格式为json对象,字段定义：
