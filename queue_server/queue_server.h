@@ -51,19 +51,21 @@ public:
     };
 
 public:
-
+    // server event
     int on_server_connection(int fd,framework::sa_in_t* addr) ;
-    int on_sync_queue_request(ServerHandler* handler,const framework::packet_info* pi) ;
-    int on_sync_queue_response(ServerHandler* handler,const framework::packet_info* pi) ;
-
     void on_server_opend(int remote_server_id);
     void on_server_closed(int remote_server_id);
     int on_server_packet(ServerHandler* handler,const framework::packet_info* pi);
     int on_fsm_response(ServerHandler* handler,const framework::packet_info* pi);
     int on_other_vote(ServerHandler* handler,const framework::packet_info* pi);
     int on_vote_success(ServerHandler* handler,const framework::packet_info* pi);
+    int on_sync_queue_request(ServerHandler* handler,const framework::packet_info* pi) ;
+    int on_sync_queue_response(ServerHandler* handler,const framework::packet_info* pi) ;
 
     framework::day_roll_logger& logger() { return m_logger ; } ;
+    //queue config
+    int queue_size() const { return m_queue_config.queue_size ; } ;
+    int log_size() const { return m_queue_config.log_size ; } ;
     
     const VoteData& self_vote_data() const { return m_self_vote_info ; } ;
 
@@ -78,9 +80,8 @@ public:
     int majority_count() const { return (m_cluster_info.size()+1) >>1  ; } ;
 
     bool is_leader() const { return m_node_info.node_id == m_node_info.leader_id ; } ;
-
     void set_leader(const VoteData& vote_data)  ;
-
+    //get leader connectioin
     ServerHandler* get_leader() ;
 
     int broadcast(framework::packet* p) { return m_server_manager.broadcast(m_node_info.node_type,p); } ;
@@ -89,14 +90,12 @@ public:
 
     void stop_vote() ;
 
-    void on_queue_log(SyncQueueData& log_data) ;
+    //worker event
     void on_event(int64_t v) ;
-
-    int queue_size() const { return m_queue_config.queue_size ; } ;
-    int log_size() const { return m_queue_config.log_size ; } ;
-
+    void on_queue_log(SyncQueueData& log_data) ;
     Worker& get_worker() { return m_worker ; } ;
     int send_event(SyncQueueData* data) ;
+
 protected:
     const char* version() { return "multi-thread version 1.0 compiled at " __TIME__ " "  __DATE__   ; } ;
 
@@ -113,14 +112,18 @@ protected:
 
     void on_timer() ;
 
-    int wait_config() ;
-
     int start_vote() ;
 
     void check_leader();
 
+    /**
+     * @brief timer to restart sync
+     */
     void on_sync_timeout(framework::timer_manager* manager) ;
 
+    /**
+     * @brief slave node try sync data from master node
+     */
     void try_sync_queue() ;
 
     const SyncQueueData& update_queue_log(SyncQueueData& sync_data);

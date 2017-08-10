@@ -43,17 +43,47 @@ class ClientProtocol(asyncio.DatagramProtocol):
         self.min_time = 9999999
         self.max_time = 0.0
 
-    def send_request(self):
-        data = {'action':107}
+    def send_request(self,data):
         self.transport.sendto(json.dumps(data).encode())
         self.request +=1 
         self.begin_request = time.time()
+        #print('send "{}"'.format(data))
+
+    def send_produce(self):
+        delay = int(time.time())
+        ttl = delay + 300
+        retry = 30
+        queue_data = 'this is queue data from request : %d' % self.request
+        data = {'action':1,'queue':'test1','delay':delay,'ttl':ttl,'retry':retry,'data':queue_data}
+        self.send_request(data)
+
+    def send_consume(self):
+        data = {'action':2,'queue':'test1'}
+        self.send_request(data)
+
+    def send_confirm(self,queue,msg_id):
+        data = { 'action':3,'msg_id':msg_id,'queue':queue }
+        self.send_request(data)
+
+
+    def on_start(self):
+        if self.request >= GlobalConfig.request : self.transport.close()
+        else : self.send_produce()
+
+    def on_result(self,response):
+        if 'msg_id' in response and response['action'] in [1,2] :
+            queue = response['queue']
+            msg_id = int(response['msg_id'])
+            self.send_confirm(queue,msg_id) 
+        else :
+            self.on_start()
+
 
     def connection_made(self, transport):
         GlobalConfig.started +=1 
         self.transport = transport
         self.begin_time = time.time()
-        self.send_request()
+        self.on_start()
 
     def datagram_received(self, data, addr):
         #print('received "{}"'.format(data))
@@ -66,21 +96,19 @@ class ClientProtocol(asyncio.DatagramProtocol):
 
             response = json.loads(data.decode())
             if response['code'] == 0 : self.success +=1 
+            self.on_result(response)
         except Exception as ex:
             print(ex)
 
-        if self.request >= GlobalConfig.request :
-            self.transport.close()
-        else :
-            self.send_request()
 
     def error_received(self, exc):
         print('Error received:', exc)
 
     def connection_lost(self, exc):
         consume_time = time.time() - self.begin_time
+        avg_time = self.total_time/self.request if self.request >0 else 0.0
         print('counter:%d success:%d consume:%f avg:%f min:%f max:%f' % 
-            (self.request,self.success,consume_time,self.total_time/self.request,self.min_time,self.max_time) )
+            (self.request,self.success,consume_time,avg_time,self.min_time,self.max_time) )
         GlobalConfig.stopped +=1
         GlobalConfig.try_stop()
 

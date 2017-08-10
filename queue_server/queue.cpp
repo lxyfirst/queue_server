@@ -7,21 +7,42 @@
 #include "queue.h"
 #include "worker_util.h"
 
-Queue::Queue(const string& name):m_name(name),m_seq_id(0),m_check_key(0)
+#include "public/system.pb.h"
+
+
+QueueMessage* QueueMessage::Create(int id,int retry,int ttl,int data_size,const char* data)
 {
-    m_timer.set_owner(this) ;
+    QueueMessage* message = (QueueMessage*)malloc(sizeof(QueueMessage)+data_size+1) ;
+    if(message == NULL) return NULL ;
+    message->id = id ;
+    message->retry = retry ;
+    message->ttl = ttl ;
+    message->data_size = data_size ;
+    message->data[data_size] = 0 ;
+    memcpy(message->data,data,data_size) ;
+    return message ;
+}
+
+void QueueMessage::Destroy(QueueMessage* message)
+{
+    free(message) ;
+}
+
+Queue::Queue(const string& name):m_name(name),m_seq_id(0)
+{
+
 
 }
 
 Queue::~Queue()
 {
-    // TODO Auto-generated destructor stub
+    clear() ;
 }
 
 int Queue::produce(const std::string& data,int delay,int ttl,int retry)
 {
 
-    if(m_message.size() > max_queue_size() )
+    if(m_message_container.size() > max_queue_size() )
     {
         warn_log_format(get_logger(),"queue full queue:%s delay:%d size:%d",
                 m_name.c_str(),delay,data.size() ) ;
@@ -30,15 +51,15 @@ int Queue::produce(const std::string& data,int delay,int ttl,int retry)
 
     QueueMessage* message = inner_produce(data,delay,ttl,retry,0) ;
     if(message == NULL) return -1 ;
-    if(message->data.size() > 1024)
+    if(message->data_size > 1024)
     {
-        trace_log_format(get_logger(),"produce message queue:%s id:%d size:%d",
-            m_name.c_str(),message->id,message->data.size() ) ;
+        trace_log_format(get_logger(),"produce message queue:%s id:%d delay:%d size:%d",
+            m_name.c_str(),message->id,delay,message->data_size ) ;
     }
     else
     {
-        trace_log_format(get_logger(),"produce message queue:%s id:%d data:%s",
-            m_name.c_str(),message->id,message->data.c_str() ) ;
+        trace_log_format(get_logger(),"produce message queue:%s id:%d delay:%d data:%s",
+            m_name.c_str(),message->id,delay,message->data ) ;
     }
     //notify
     SyncQueueData* sync_data  = new SyncQueueData;
@@ -46,11 +67,11 @@ int Queue::produce(const std::string& data,int delay,int ttl,int retry)
     sync_data->set_message_id(message->id) ;
     sync_data->set_queue(m_name) ;
 
-    sync_data->set_delay(message->delay) ;
-    sync_data->set_ttl(message->ttl) ;
-    sync_data->set_retry(message->retry) ;
+    sync_data->set_delay(delay) ;
+    sync_data->set_ttl(ttl) ;
+    sync_data->set_retry(retry) ;
 
-    sync_data->set_data(message->data);
+    sync_data->set_data(message->data,message->data_size);
 
     if( notify_sync_event(sync_data)!=0) delete sync_data ;
 
@@ -61,81 +82,86 @@ int Queue::produce(const std::string& data,int delay,int ttl,int retry)
 QueueMessage* Queue::inner_produce(const string& data,int delay,int ttl,int retry,int id)
 {
 
+
     if(id < 1 )
     {
-        m_seq_id = ( m_seq_id & 0xfffffff ) +1 ;
-        id = m_seq_id ;
+        id = create_message_id(m_seq_id) ;
     }
     else
     {
         m_seq_id = id ;
     }
 
-    QueueMessage& queue_message = m_message[id]  ;
-    queue_message.id = id ;
-    queue_message.delay = delay ;
-    queue_message.ttl = ttl ;
-    queue_message.retry = retry ;
-    queue_message.data = data ;
+    QueueMessage* message = QueueMessage::Create(id,retry,ttl,data.size(),data.data());
+    if(message == NULL) return NULL ;
 
-    m_work_queue.insert(IndexData(delay,id)) ;
+    MessageValue value(delay,message) ;
+    m_id_container[id] = m_message_container.insert(value) ;
 
-    return &queue_message ;
+    return message ;
+
 }
 
 
 int Queue::consume(string& data)
 {
-    if( m_work_queue.size() <1 ) return 0 ;
+    if( m_message_container.size() <1 ) return 0 ;
 
     int now = time(0) ;
-    QueueIndex::iterator it;
-    while(( it = m_work_queue.begin()) != m_work_queue.end() )
+    MessageContainer::iterator it = m_message_container.begin() ;
+    int delay = it->first  ;
+    if( delay > now) return 0 ;
+
+    QueueMessage* message = it->second ;
+
+    data.assign(message->data,message->data_size) ;
+
+    int msg_id = message->id ;
+    int retry_time = now + message->retry ;
+    if(message->retry >0 && retry_time < message->ttl)
     {
-        if(it->first > now ) return 0 ;
-        QueueMessage* message = get_message(it->second) ;
-        m_work_queue.erase(it) ;
-
-        if ( message == NULL) continue ;
-
-        int msg_id = message->id ;
-        trace_log_format(get_logger(),"consume message queue:%s id:%d",m_name.c_str(),msg_id) ;
-
-        int retry_time = now + message->retry ;
-        if(message->retry >0 && retry_time < message->ttl)
-        {
-            data = message->data ;
-            m_retry_queue.insert(IndexData(retry_time ,message->id)) ;
-        }
-        else
-        {
-            data.swap(message->data) ;
-            erase(message->id) ;
-        }
-
-        return msg_id ;
+        MessageValue value(retry_time ,message) ;
+        m_message_container.erase(it) ;
+        m_id_container[msg_id] = m_message_container.insert(value) ;
 
     }
+    else
+    {
+        erase(msg_id) ;
+    }
 
-    return 0 ;
+    return msg_id ;
 
 }
 
-void Queue::erase(int id)
+void Queue::inner_erase(int msg_id)
 {
-    if(m_message.count(id) == 0 ) return ;
-    m_message.erase(id) ;
-    trace_log_format(get_logger(),"erase message queue:%s id:%d",m_name.c_str(),id) ;
+    IdContainer::iterator it = m_id_container.find(msg_id) ;
+    if(it != m_id_container.end())
+    {
+        MessageContainer::iterator message_it = it->second ;
+        QueueMessage::Destroy(message_it->second) ;
+        m_message_container.erase(message_it) ;
+        m_id_container.erase(it) ;
+    }
+}
+
+void Queue::erase(int msg_id)
+{
+    inner_erase(msg_id) ;
+    trace_log_format(get_logger(),"erase message queue:%s id:%d",m_name.c_str(),msg_id) ;
 
     //notify
     SyncQueueData* sync_data = new SyncQueueData;
     sync_data->set_queue(m_name) ;
     sync_data->set_op_type(POP_QUEUE_REQUEST) ;
-    sync_data->set_message_id(id) ;
+    sync_data->set_message_id(msg_id) ;
 
     if(notify_sync_event(sync_data)!=0) delete sync_data ;
 
 }
+
+
 
 int Queue::update(const SyncQueueData& sync_data)
 {
@@ -144,7 +170,7 @@ int Queue::update(const SyncQueueData& sync_data)
     if(sync_data.op_type() == POP_QUEUE_REQUEST )
     {
         trace_log_format(get_logger(),"sync erase message queue:%s id:%d",m_name.c_str(),id ) ;
-        m_message.erase(id) ;
+        inner_erase(id) ;
     }
     else if ( sync_data.op_type() == PUSH_QUEUE_REQUEST )
     {
@@ -152,11 +178,11 @@ int Queue::update(const SyncQueueData& sync_data)
                 m_name.c_str(),id, sync_data.data().size() ) ;
 
         //todo queue is full and update
-        int over_size = m_message.size() - max_queue_size();
+        int over_size = m_message_container.size() - max_queue_size();
         if(over_size >0 && over_size %10 == 1 )
         {
             warn_log_format(get_logger(),"update full queue:%s size:%d",
-                    m_name.c_str(),m_message.size() ) ;
+                    m_name.c_str(),m_message_container.size() ) ;
         }
 
         inner_produce(sync_data.data(),sync_data.delay(),sync_data.ttl(),sync_data.retry(),id);
@@ -167,40 +193,25 @@ int Queue::update(const SyncQueueData& sync_data)
 
 void Queue::clear()
 {
-    m_message.clear() ;
-    m_work_queue.clear() ;
-    m_retry_queue.clear() ;
-}
-
-void Queue::check_work_queue()
-{
-    int check_count = 100 ;
-    QueueIndex::iterator it = m_work_queue.lower_bound(m_check_key) ;
-    while((it!=m_work_queue.end()) && (--check_count >0) )
+    for(auto& pair : m_message_container)
     {
-        if(m_message.count(it->second)==0)
-        {
-            QueueIndex::iterator erase_it = it ;
-            ++it ;
-            m_work_queue.erase(erase_it) ;
-        }
-        else
-        {
-            ++it ;
-        }
+        QueueMessage::Destroy(pair.second) ;
     }
 
-    if(check_count >0 ) m_check_key = 0 ;
-    else m_check_key = it->first ;
+    m_message_container.clear() ;
+    m_id_container.clear() ;
+
 }
+
 
 int Queue::wait_status() const
 {
     int now = time(NULL) , count = 0 ,total_time =0 ;
-    for(QueueIndex::const_iterator it=m_work_queue.begin();it!=m_work_queue.end();++it)
+    for(auto& pair : m_message_container)
     {
-        if( (count & 0x10) || (it->first > now) ) break ;
-        total_time += (now - it->first) & 0xFF ;
+        int delay = pair.first ;
+        if( (count & 0x10) || (delay > now) ) break ;
+        total_time += (now - pair.first) & 0xFF ;
         ++count ;
 
     }
@@ -210,35 +221,6 @@ int Queue::wait_status() const
 }
 
 
-
-void Queue::on_timeout(framework::timer_manager* manager)
-{
-
-    int now = time(0) ;
-
-    //move from retry queue to work queue
-    QueueIndex::iterator it = m_retry_queue.begin();
-    for(; (it!=m_retry_queue.end()) && (it->first <= now ) ;++it )
-    {
-        QueueMessage* message = get_message(it->second) ;
-        if(message )
-        {
-            m_work_queue.insert(IndexData(it->first,it->second));
-            debug_log_format(get_logger(),"retry message queue:%s id:%d",m_name.c_str(),it->second) ;
-        }
-    }
-
-    m_retry_queue.erase(m_retry_queue.begin(),it) ;
-
-    check_work_queue() ;
-
-    //todo remove expired message
-
-    get_worker().add_timer_after(&m_timer,2) ;
-
-
-}
-
 Queue* QueueManager::create_queue(const string& queue_name)
 {
     if (m_queue_list.count(queue_name) >0 ) return NULL ;
@@ -247,7 +229,6 @@ Queue* QueueManager::create_queue(const string& queue_name)
     if(queue == NULL) return NULL ;
 
     m_queue_list[queue_name] = queue ;
-    queue->on_timeout(NULL) ;
 
     return queue ;
 }
@@ -255,9 +236,9 @@ Queue* QueueManager::create_queue(const string& queue_name)
 
 QueueManager::~QueueManager()
 {
-    for(QueueContainer::iterator it=m_queue_list.begin();it!=m_queue_list.end();++it)
+    for(auto& pair : m_queue_list)
     {
-        delete it->second ;
+        delete pair.second ;
     }
 
     m_queue_list.clear() ;

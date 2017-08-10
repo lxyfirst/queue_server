@@ -97,26 +97,21 @@ int QueueProcessor::process(Document& request)
 
 static const JsonFieldInfo PRODUCE_FILED_LIST{
     {FIELD_DATA,rapidjson::kStringType},
-    {FIELD_DELAY,rapidjson::kNumberType },
-    {FIELD_TTL,rapidjson::kNumberType},
-    {FIELD_RETRY,rapidjson::kNumberType},
-
-
+    //{FIELD_DELAY,rapidjson::kNumberType },
 } ;
 
 int QueueProcessor::process_produce(Document& request,Queue& queue)
 {
     if(!json_check_field(request,PRODUCE_FILED_LIST)) return -1 ;
 
+    int now = time(0) ;
+    int delay = json_get_value(request,FIELD_DELAY,now) ;
+    if(delay < now ) delay = now -1 ;
 
-    int delay =  request[FIELD_DELAY].GetInt() ;
-    //int now = time(0) ;
-    //if(delay < now ) delay = now -1 ;
+    int ttl = json_get_value(request,FIELD_TTL,delay+1) ;
+    //if( delay >= ttl ) return -1 ;
 
-    int ttl = request[FIELD_TTL].GetInt() ;
-    if( delay >= ttl ) return -1 ;
-
-    int retry = request[FIELD_RETRY].GetInt() ;
+    int retry = json_get_value(request,FIELD_RETRY,0) ;
     if(retry < 0 ) return -1 ;
 
     int msg_id = queue.produce(request[FIELD_DATA].GetString(),delay,ttl,retry) ;

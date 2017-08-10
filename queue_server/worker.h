@@ -127,9 +127,33 @@ private:
 
 };
 
-//typedef std::vector<std::pair<std::string,int> > JsonFieldInfo ;
 typedef std::map<std::string,int > JsonFieldInfo ;
 
+/*
+ * @brief check field and value type of json object
+ * @return true on success
+ */
 bool json_check_field(const Value&json,const JsonFieldInfo& field_list) ;
+
+/**
+ * @brief parse request data
+ * @return 0 on success
+ */
 int json_parse_request(const char* begin,const char* end,Document& request) ;
+
+/**
+ * @brief serialize json object
+ * @return true on success
+ */
 bool json_encode(const Value& json,StringBuffer& buffer) ;
+
+/**
+ * @brief get value from json object
+ * @param json json object
+ * @param key
+ * @param default_value
+ * @return int value
+ */
+int json_get_value(const Value& json,const char* key,int default_value);
+
+

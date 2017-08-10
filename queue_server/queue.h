@@ -10,28 +10,33 @@
 #include <map>
 #include <list>
 #include <tr1/unordered_map>
-#include "framework/timer_manager.h"
-#include "public/system.pb.h"
 
 using std::string ;
 
 struct QueueMessage
 {
-    QueueMessage():id(0),retry(0),delay(0),ttl(0) {} ;
-    int id ;
-    int retry ;
-    int delay ;
-    int ttl ;
-    string data ;
+    static QueueMessage* Create(int id,int retry,int ttl,int data_size,const char* data);
 
+    static void Destroy(QueueMessage* message);
+
+    int id ;
+    int ttl ;
+    int retry ;
+    int data_size ;
+    char data[0] ;
 };
 
+inline int32_t create_message_id(int32_t& current_id)
+{
+    current_id = ( current_id & 0xfffffff ) +1 ;
+    return current_id ;
+}
 
-typedef std::tr1::unordered_map<int,QueueMessage> MessageContainer ;
-typedef std::multimap<int,int> QueueIndex ;
-typedef std::pair<int,int> IndexData ;
+typedef std::multimap<int,QueueMessage*> MessageContainer ;
+typedef MessageContainer::value_type MessageValue ;
+typedef std::tr1::unordered_map<int,MessageContainer::iterator> IdContainer ;
 
-
+class SyncQueueData ;
 
 class Queue
 {
@@ -41,7 +46,7 @@ public:
 
     const string& name() const { return m_name ; } ;
 
-    int size() const { return m_message.size() ; } ;
+    int size() const { return m_message_container.size() ; } ;
     int max_id() const { return m_seq_id ; } ;
     int wait_status() const ;
     /*
@@ -52,7 +57,7 @@ public:
     int produce(const string& data,int delay,int ttl,int retry) ;
 
     /*
-     * @brief 获取并移除可用消息，可用指在有效期内,若需要确认消息，放入重试队列
+     * @brief 消费消息
      * @param data存储返回的消息对象
      * @return id or 0
      */
@@ -61,11 +66,9 @@ public:
     /*
      * @brief 删除消息
      */
-    void erase(int id) ;
+    void erase(int msg_id) ;
 
     void clear() ;
-
-    void on_timeout(framework::timer_manager* manager) ;
 
     int update(const SyncQueueData& data) ;
 
@@ -75,23 +78,15 @@ private:
 
     QueueMessage* inner_produce(const string& data,int delay,int ttl,int retry,int id) ;
 
-    void check_work_queue() ;
-
-    QueueMessage* get_message(int id)
-    {
-        MessageContainer::iterator it = m_message.find(id) ;
-        if(it == m_message.end()) return NULL ;
-        return &it->second ;
-    }
+    void inner_erase(int msg_id) ;
 
 private:
-    framework::template_timer<Queue> m_timer ;
+
     string m_name ;
-    MessageContainer m_message ;
-    QueueIndex m_work_queue ;
-    QueueIndex m_retry_queue ;
-    int m_seq_id ;
-    int m_check_key ;
+    MessageContainer m_message_container ;
+    IdContainer m_id_container ;
+    int32_t m_seq_id ;
+
 
 };
 

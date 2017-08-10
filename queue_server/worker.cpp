@@ -94,6 +94,16 @@ bool json_check_field(const Value&json,const JsonFieldInfo& field_list)
 }
 
 
+int json_get_value(const Value& json,const char* key,int default_value)
+{
+    if(!json.IsObject() ) return default_value ;
+    Value::ConstMemberIterator it = json.FindMember(key) ;
+    if(it == json.MemberEnd() ) return default_value ;
+    if(!it->value.IsInt()) return default_value ;
+    return it->value.GetInt() ;
+}
+
+
 Worker::Worker(framework::log_thread& logger):m_logger(logger)
 {
     m_timer.set_owner(this) ;

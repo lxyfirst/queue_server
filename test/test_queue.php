@@ -224,13 +224,42 @@ $station_id = "test" ;
 $queue_name = "task#${station_id}:order:event" ;
 $queue_name = 'test_queue' ;
 
-$client = new QueueClient($host_list,"test",false) ;
-var_dump($client->produce(array("title"=>$queue_name),time(),60,time()+3600  ) );
-var_dump($client->list_queue()) ;
-//$msg = $client->consume();
-//$msg_id =  $msg['msg_id'] ;
-//if ($msg_id >0) var_dump($client->confirm($msg_id) ) ;
+$client = new QueueClient($host_list,uniqid('test_'),false) ;
 
-echo "consume_time :" . (microtime() - $begin_time) . "\n" ;   
+$msg_data = 'test_' . time() ;
+$result = $client->produce($msg_data,time()-3600,0,0) ;
+assert($result['code'] == 0 && $result['msg_id'] >0) ;
+
+$result  = $client->consume();
+assert($result['code'] == 0 && $result['msg_id'] >0 && $result['data'] == $msg_data ) ;
+
+$msg_id = $result['msg_id'] ;
+$result  = $client->confirm($msg_id);
+assert($result['code'] == 0) ;
+
+$msg_data = 'test_' . time() ;
+$result = $client->produce($msg_data,time(),2,time() + 10 ) ;
+assert($result['code'] == 0 && $result['msg_id'] >0) ;
+
+$result  = $client->consume();
+assert($result['code'] == 0 && $result['msg_id'] >0 && $result['data'] == $msg_data ) ;
+
+sleep(1) ;
+$result  = $client->consume();
+assert($result['code'] == 0 && empty($result['msg_id']) && empty($result['data']) ) ;
+
+sleep(2) ;
+$result  = $client->consume();
+assert($result['code'] == 0 && $result['msg_id'] >0 && $result['data'] == $msg_data ) ;
+
+$msg_id = $result['msg_id'] ;
+$result  = $client->confirm($msg_id);
+assert($result['code'] == 0) ;
+
+sleep(3) ;
+$result  = $client->consume();
+assert($result['code'] == 0 && empty($result['msg_id']) && empty($result['data']) ) ;
+
+var_dump($client->list_queue()) ;
 
 ?>
