@@ -137,9 +137,11 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
 {
     Document request ;
     if(json_parse_request(pi->data,pi->data + pi->size,request)!=0) return -1 ;
-    debug_log_format(get_logger(),"recv data size:%d",pi->size) ;
+    char host[16] = {0} ;
+    this->get_remote_addr(host,sizeof(host)) ;
 
     int action = request[FIELD_ACTION].GetInt() ;
+    debug_log_format(get_logger(),"recv host:%s action:%d size:%d",host,action,pi->size) ;
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;

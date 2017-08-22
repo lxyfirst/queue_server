@@ -32,9 +32,9 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
     char remote_host[16] = {0} ;
     framework::addr2str(remote_host,sizeof(remote_host),&p->addr) ;
 
-    debug_log_format(get_logger(),"recv host:%s data:%s",remote_host,p->data) ;
-
     int action = request[FIELD_ACTION].GetInt() ;
+    debug_log_format(get_logger(),"recv host:%s action:%d size:%d",remote_host,action,p->data_size) ;
+
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
         SourceData source ;

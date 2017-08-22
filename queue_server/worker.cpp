@@ -411,10 +411,12 @@ void Worker::list_queue(Document& queue_list)
 
         Value value  ;
         value.SetObject() ;
-        value.AddMember("name",pair.first,queue_list.GetAllocator()) ;
         value.AddMember("size",pair.second->size(),queue_list.GetAllocator() ) ;
         value.AddMember("wait_status",pair.second->wait_status(),queue_list.GetAllocator() ) ;
-        queue_list.PushBack(value,queue_list.GetAllocator() ) ;
+        //value.AddMember("name",pair.first,queue_list.GetAllocator()) ;
+        //queue_list.PushBack(value,queue_list.GetAllocator() ) ;
+        Value key(pair.first.data(),pair.first.size()) ;
+        queue_list.AddMember(key,value,queue_list.GetAllocator()) ;
     }
 }
 
