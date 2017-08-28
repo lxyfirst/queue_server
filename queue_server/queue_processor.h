@@ -32,8 +32,8 @@ static const char FIELD_MASTER_HOST[] = "master_host" ;
 static const char FIELD_ACTION[] = "action" ;
 static const char FIELD_QUEUE[] = "queue" ;
 static const char FIELD_DELAY[] = "delay" ;
-static const char FIELD_TTL[] = "ttl" ;
-static const char FIELD_RETRY[] = "retry" ;
+static const char FIELD_TTL[] = "ttl" ; //  expired time
+static const char FIELD_RETRY[] = "retry" ; //  retry seconds
 static const char FIELD_MSG_ID[] = "msg_id" ;
 
 class QueueProcessor

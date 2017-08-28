@@ -28,7 +28,7 @@ int QueueProcessor::fill_response(Document& request,int code,const char* reason)
     if(code !=0)
     {
         rapidjson::Value value(reason,strlen(reason)) ;
-        request.AddMember("reason",value,request.GetAllocator() ) ;
+        request.AddMember(FIELD_REASON,value,request.GetAllocator() ) ;
     }
     return 0 ;
 }
@@ -108,8 +108,8 @@ int QueueProcessor::process_produce(Document& request,Queue& queue)
     int delay = json_get_value(request,FIELD_DELAY,now) ;
     if(delay < now ) delay = now -1 ;
 
-    int ttl = json_get_value(request,FIELD_TTL,delay+1) ;
-    //if( delay >= ttl ) return -1 ;
+    int ttl = json_get_value(request,FIELD_TTL,delay+3600) ;
+    if( delay >= ttl ) return -1 ;
 
     int retry = json_get_value(request,FIELD_RETRY,0) ;
     if(retry < 0 ) return -1 ;
@@ -135,8 +135,8 @@ int QueueProcessor::process_consume(Document& request,Queue& queue)
     int msg_id = queue.consume(data) ;
     if(msg_id >0)
     {
-        request.AddMember("msg_id",msg_id,request.GetAllocator()) ;
-        request.AddMember("data",data,request.GetAllocator()) ;
+        request.AddMember(FIELD_MSG_ID,msg_id,request.GetAllocator()) ;
+        request.AddMember(FIELD_DATA,data,request.GetAllocator()) ;
     }
 
     return fill_response(request) ;
@@ -144,11 +144,8 @@ int QueueProcessor::process_consume(Document& request,Queue& queue)
 
 int QueueProcessor::process_confirm(Document& request,Queue& queue)
 {
-    if(request.HasMember("msg_id") && request["msg_id"].IsInt())
-    {
-        int msg_id = request["msg_id"].GetInt() ;
-        queue.erase(msg_id) ;
-    }
+    int msg_id = json_get_value(request,FIELD_MSG_ID,0) ;
+    if(msg_id >0) queue.erase(msg_id) ;
 
     return fill_response(request) ;
 }
