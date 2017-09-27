@@ -40,7 +40,7 @@ protected:
     int on_heartbeat(const framework::packet_info* pi);
 
 private:
-    framework::template_timer<ClientTcpHandler> m_idle_timer ;
+    framework::base_timer m_idle_timer ;
     int m_last_time ;
 
 };

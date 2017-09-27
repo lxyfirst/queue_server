@@ -17,7 +17,7 @@ using namespace framework ;
 ClientTcpHandler::ClientTcpHandler()
 {
 
-    m_idle_timer.set_owner(this) ;
+    m_idle_timer.set_callback(this,&ClientTcpHandler::on_timeout) ;
 
 }
 

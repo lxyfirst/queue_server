@@ -6,7 +6,6 @@
  */
 
 #include "framework/system_util.h"
-#include "framework/member_function_bind.h"
 #include "worker.h"
 #include "queue_processor.h"
 #include "worker_util.h"
@@ -106,7 +105,7 @@ int json_get_value(const Value& json,const char* key,int default_value)
 
 Worker::Worker(framework::log_thread& logger):m_logger(logger)
 {
-    m_timer.set_owner(this) ;
+    m_timer.set_callback(this,&Worker::on_timeout) ;
 }
 
 Worker::~Worker()
@@ -135,7 +134,7 @@ int Worker::on_init()
     if(m_reactor.init(10240)!=0) error_return(-1,"init reactor failed") ;
     m_timer_engine.init(time(0),10) ;
     if(m_event_queue.init(max_queue_size())!=0) error_return(-1,"init queue failed") ;
-    eventfd_handler::callback_type callback = framework::member_function_bind(&Worker::on_event,this) ;
+    eventfd_handler::callback_type callback = std::bind(&Worker::on_event,this,std::placeholders::_1) ;
     if(m_event_handler.init(m_reactor,callback )!=0 )
     {
         error_return(-1,"init eventfd failed") ;
@@ -151,7 +150,9 @@ int Worker::on_init()
         error_return(-1,"init udp failed");
     }
 
-    framework::tcp_acceptor::callback_type client_callback = member_function_bind(&Worker::on_client_connection,this) ;
+    using std::placeholders::_1 ;
+    using std::placeholders::_2 ;
+    framework::tcp_acceptor::callback_type client_callback = std::bind(&Worker::on_client_connection,this,_1,_2) ;
     if(m_client_acceptor.init(m_reactor,listen_host,listen_port ,client_callback )!=0)
     {
         error_return(-1,"init client acceptor failed") ;

@@ -1,16 +1,14 @@
 {
-    "log_prefix" : "queue_server" , 
+    "log_prefix" : "queue_server.2" , 
     "log_level" :3 ,
 
     "node_type" :10 , 
-    "node_id" :1 ,
+    "node_id" :2 ,
     "host" : "0.0.0.0",
-    "port" : 1111 ,
+    "port" : 1112 ,
 
-    "queue_size":100000 , 
-    "queue_log_size":100000 , 
-    "queue_data_blocks":10, 
-    "queue_data_dir": "queue_data", 
+    "queue_size":10000 , 
+    "queue_log_size":10000 , 
     "queue_sync_rate":3000  ,
 
     "cluster_node_list" : [

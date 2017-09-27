@@ -237,8 +237,8 @@ void tcp_data_handler::on_write(int fd)
     //active connect event
     if(m_connect_status == STATUS_CONNECTING) 
     {
-        m_write_flag = 0 ;
-        if(m_reactor) m_reactor->mod_handler(fd,this,base_reactor::EVENT_READ) ;
+        //m_write_flag = 0 ;
+        //if(m_reactor) m_reactor->mod_handler(fd,this,base_reactor::EVENT_READ) ;
         update_status(STATUS_CONNECTED) ;
         return ;
     }
@@ -294,7 +294,8 @@ void tcp_data_handler::on_error(int fd)
 
 int tcp_data_handler::send(const char* data,int size,int delay_flag)
 {
-    if(m_id.fd < 0 || m_connect_status != STATUS_CONNECTED ) return -1 ;
+    //if(m_id.fd < 0 || m_connect_status != STATUS_CONNECTED ) return -1 ;
+    if(m_id.fd < 0 ) return -1 ;
     if(m_sbuf.space_size() < size &&(m_sbuf.resize(m_sbuf.capacity() + size )!=0) )
     {
         return -1 ;
@@ -335,7 +336,8 @@ int tcp_data_handler::send(const char* data,int size,int delay_flag)
 
 int tcp_data_handler::send( packet *p,int delay_flag)
 {
-    if(m_id.fd < 0 || m_connect_status != STATUS_CONNECTED ) return -1 ;
+    //if(m_id.fd < 0 || m_connect_status != STATUS_CONNECTED ) return -1 ;
+    if(m_id.fd < 0 ) return -1 ;
     int size = p->encode_size() ;
     if(size < 1 ) return -1 ;
     if(m_sbuf.space_size() < size && m_sbuf.resize(m_sbuf.capacity() + size )!=0)

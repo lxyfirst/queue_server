@@ -33,6 +33,8 @@ struct QueueConfig
     int queue_size ;
     int log_size ;
     int sync_rate ;
+    int data_blocks ;
+    std::string dir ;
 };
 
 class ClientTcpHandler ;
@@ -128,7 +130,7 @@ protected:
 
     const SyncQueueData& update_queue_log(SyncQueueData& sync_data);
 private:
-    framework::template_timer<QueueServer,&QueueServer::on_sync_timeout> m_sync_timer ;
+    framework::base_timer m_sync_timer ;
     framework::day_roll_logger m_logger ;
     framework::tcp_acceptor m_server_acceptor ;
     framework::eventfd_handler m_event_handler ;

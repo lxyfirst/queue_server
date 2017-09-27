@@ -50,6 +50,7 @@ public :
      */
     virtual void on_write(int fd) = 0 ;
 
+    virtual int tag_id() const { return 0 ;} ;
 private:
     io_handler(const io_handler& ) ;
     io_handler& operator=(const io_handler&) ;

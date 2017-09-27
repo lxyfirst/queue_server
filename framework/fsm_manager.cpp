@@ -30,7 +30,6 @@ void fsm_manager::clear()
     {
         free_fsm(pair.second) ;
     }
-   
 
     m_container.clear() ;
 }

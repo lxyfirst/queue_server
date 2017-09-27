@@ -83,6 +83,12 @@ protected:
 
 
     /**
+     * @brief called  when parse args , call parse_option() default
+     * @return 0 on success , if failed ,application will exit
+     */
+    virtual int on_parse_args(int argc,char** argv) ;
+
+    /**
      * @brief called  when initialized , implemented derived class
      * @return 0 on success , if failed ,application will exit
      */
@@ -160,8 +166,8 @@ private:
     int8_t m_sig_status ;
     volatile int8_t m_status ;
 
-    template_timer<application,&application::on_timeout> m_timer ;
-    template_timer<application,&application::on_delay_timeout> m_delay_timer ;
+    base_timer m_timer ;
+    base_timer m_delay_timer ;
 
 
 };

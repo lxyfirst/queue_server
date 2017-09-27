@@ -112,7 +112,7 @@ protected:
 
     int init_leader_handler() ;
 private:
-    framework::template_timer<Worker> m_timer ;
+    framework::base_timer m_timer ;
     framework::log_thread& m_logger ;
     framework::epoll_reactor m_reactor ;
     framework::timer_manager m_timer_engine ;

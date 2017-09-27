@@ -7,7 +7,6 @@
 
 #include "framework/system_util.h"
 #include "framework/time_util.h"
-#include "framework/member_function_bind.h"
 #include "framework/mmap_file.h"
 #include "public/message.h"
 
@@ -19,7 +18,7 @@ using namespace framework ;
 
 QueueServer::QueueServer():m_worker(m_log_thread)
 {
-   m_sync_timer.set_owner(this) ;
+   m_sync_timer.set_callback(this,&QueueServer::on_sync_timeout) ;
 
 }
 
@@ -50,7 +49,7 @@ int QueueServer::on_init()
     
     //init event queue
     if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
-    eventfd_handler::callback_type callback = member_function_bind(&QueueServer::on_event,this) ;
+    eventfd_handler::callback_type callback = std::bind(&QueueServer::on_event,this,std::placeholders::_1) ;
     if(m_event_handler.init(reactor(),callback )!=0 )
     {
         error_return(-1,"init eventfd failed") ;
@@ -120,8 +119,9 @@ int QueueServer::load_cluster_config(const Document& root)
     m_self_info = it->second ;
     m_cluster_info.erase(it) ;
 
-
-    tcp_acceptor::callback_type server_callback = member_function_bind(&QueueServer::on_server_connection,this) ;
+    using std::placeholders::_1 ;
+    using std::placeholders::_2 ;
+    tcp_acceptor::callback_type server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
     if(m_server_acceptor.init(reactor(),m_self_info.host,m_self_info.port,server_callback )!=0)
     {
         error_return(-1,"init server acceptor failed") ;
