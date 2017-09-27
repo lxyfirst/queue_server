@@ -1,4 +1,6 @@
 
+syntax = "proto2";
+
 enum SystemMessageType
 {
     SYSTEM_BASE = 256 ;

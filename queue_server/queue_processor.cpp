@@ -102,14 +102,14 @@ static const JsonFieldInfo PRODUCE_FILED_LIST{
 
 int QueueProcessor::process_produce(Document& request,Queue& queue)
 {
-    if(!json_check_field(request,PRODUCE_FILED_LIST)) return -1 ;
+    if(!json_check_field(request,PRODUCE_FILED_LIST)) return fill_response(request,-1,"field error") ; ;
 
     int now = time(0) ;
     int delay = json_get_value(request,FIELD_DELAY,now) ;
     if(delay < now ) delay = now -1 ;
 
     int ttl = json_get_value(request,FIELD_TTL,delay+3600) ;
-    if( delay >= ttl ) return -1 ;
+    if( delay > ttl ) return fill_response(request,-1,"time error") ; ;
 
     int retry = json_get_value(request,FIELD_RETRY,0) ;
     if(retry < 0 ) return -1 ;
