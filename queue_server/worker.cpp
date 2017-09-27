@@ -145,7 +145,7 @@ int Worker::on_init()
 
     const char* listen_host = self_info.host().c_str() ;
     int listen_port = self_info.port() ;
-    if(m_udp_handler.init(&m_reactor,listen_host,listen_port)!=0 )
+    if(m_udp_handler.init(m_reactor,listen_host,listen_port)!=0 )
     {
         error_return(-1,"init udp failed");
     }
@@ -178,7 +178,7 @@ int Worker::on_client_connection(int fd,sa_in_t* addr)
 
     if(client_handler == NULL) return -1 ;
 
-    if(client_handler->init(&m_reactor,fd) !=0)
+    if(client_handler->init(m_reactor,fd) !=0)
     {
         m_client_pool.release(client_handler) ;
         return -1 ;
@@ -346,7 +346,7 @@ int Worker::init_leader_handler()
     info_log_format(m_logger,"try connect to leader node_id:%d host:%s",
             leader_info.node_id(),leader_info.host().c_str() );
 
-    return m_leader_handler.init(&m_reactor,leader_info.host().c_str(),leader_info.port() );
+    return m_leader_handler.init(m_reactor,leader_info.host().c_str(),leader_info.port() );
 
 }
 

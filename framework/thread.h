@@ -65,6 +65,10 @@ protected:
      */
     virtual void run_once() = 0 ;
 
+    /*
+     * @brief  thread tag id , implemented by concrete class
+     */
+    virtual int tag_id()  { return 0 ; } ;
 private:
     static void* thread_entry(void* arg) ;
 private:

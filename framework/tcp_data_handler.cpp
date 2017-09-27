@@ -33,7 +33,7 @@ tcp_data_handler::~tcp_data_handler()
     fini(true) ;
 }
 
-int tcp_data_handler::init(base_reactor* reactor,const char* host,int port)
+int tcp_data_handler::init(base_reactor& reactor,const char* host,int port)
 {
     if(m_id.fd >= 0 || host == NULL ) return -1 ;
 
@@ -46,14 +46,14 @@ int tcp_data_handler::init(base_reactor* reactor,const char* host,int port)
     int fd = create_tcp_client(&service_addr,0) ;
     if(fd < 0 ) return -3 ;
 
-    if( reactor->add_handler(fd,this,base_reactor::EVENT_WRITE)!=0 )
+    if( reactor.add_handler(fd,this,base_reactor::EVENT_WRITE)!=0 )
     {
         close(fd) ;
         return -3 ;
     }
     m_write_flag = 1 ;
 
-    m_reactor = reactor ;
+    m_reactor = &reactor ;
 
     m_id.fd = fd ;
     m_id.timestamp = time(0) ;
@@ -63,21 +63,21 @@ int tcp_data_handler::init(base_reactor* reactor,const char* host,int port)
     return 0 ;
 }
 
-int tcp_data_handler::init(base_reactor* reactor,int fd)
+int tcp_data_handler::init(base_reactor& reactor,int fd)
 {
-    if(m_id.fd >= 0 || fd < 0 || reactor == NULL ) return -1 ;
+    if(m_id.fd >= 0 || fd < 0 ) return -1 ;
     set_nonblock(fd) ;
     //set_socket_nodelay(fd) ;
     if( m_rbuf.resize(INIT_BUF_SIZE) != 0 ) return -2;
     if( m_sbuf.resize(INIT_BUF_SIZE) != 0 ) return -2;
   
-    if( reactor->add_handler(fd,this,base_reactor::EVENT_READ)!=0 )
+    if( reactor.add_handler(fd,this,base_reactor::EVENT_READ)!=0 )
     {
         return -3 ;
     }
     m_write_flag = 0 ;
 
-    m_reactor = reactor ;
+    m_reactor = &reactor ;
     m_id.fd = fd ;
     m_id.timestamp = time(0) ;
 
@@ -87,17 +87,17 @@ int tcp_data_handler::init(base_reactor* reactor,int fd)
     return 0 ;
 }
 
-int tcp_data_handler::attach_reactor(base_reactor* reactor)
+int tcp_data_handler::attach_reactor(base_reactor& reactor)
 {
-    if( (m_reactor!= NULL) || (reactor==NULL) ) return -1 ;
+    if( m_reactor!= NULL  ) return -1 ;
     
-    if(reactor->add_handler(m_id.fd,this,base_reactor::EVENT_READ|base_reactor::EVENT_WRITE)!=0)
+    if(reactor.add_handler(m_id.fd,this,base_reactor::EVENT_READ|base_reactor::EVENT_WRITE)!=0)
     {
         return -2 ;
     }
     
     m_write_flag = 1 ;
-    m_reactor = reactor ;
+    m_reactor = &reactor ;
     
     return 0 ;
 }

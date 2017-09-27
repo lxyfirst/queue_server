@@ -60,7 +60,7 @@ int ServerManager::create_connection(const char* host,int port,int remote_server
     ServerHandler* server_handler = new ServerHandler(this,m_local_server_id) ;
     if(server_handler == NULL) return -1 ;
     
-    if(server_handler->init(m_reactor,host,port) !=0)
+    if(server_handler->init(*m_reactor,host,port) !=0)
     {
         debug_log_format((*m_logger),"init connection failed , remote_server_id:%#x",remote_server_id) ;
         delete server_handler;
@@ -77,7 +77,7 @@ int ServerManager::on_new_connection(int fd)
     
     ServerHandler* server_handler = new ServerHandler(this,m_local_server_id) ;
     if(server_handler == NULL) return -1 ;
-    if(server_handler->init(m_reactor,fd) !=0)
+    if(server_handler->init(*m_reactor,fd) !=0)
     {
         delete server_handler ;
         return -1 ;
