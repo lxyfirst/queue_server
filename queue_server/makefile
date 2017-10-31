@@ -1,6 +1,5 @@
 
 SRCS=$(wildcard *.cpp)
-#BIN_SRCS=$(shell grep "int main" -l *.cpp) 
 BIN_SRCS=$(shell grep "IMPLEMENT_MAIN" -l *.cpp) 
 LIB_SRCS=$(patsubst $(BIN_SRCS),,$(SRCS))
 
@@ -9,18 +8,17 @@ OBJS=$(SRCS:.cpp=.o)
 
 LIB_OBJS=$(patsubst %.cpp,%.o,$(LIB_SRCS)) 
 BINS=$(patsubst %.cpp,%.bin,$(BIN_SRCS))
-#BINS=test_server
 DEP_LIBS=  ../framework/libframework.a  ../public/libproto_message.a 
 
 LIB_NAME=
 SO_LIB=$(patsubst %,lib%.so,$(LIB_NAME))
 STATIC_LIB=$(patsubst %,lib%.a,$(LIB_NAME))
 
+APP_VERSION=$(shell git show --format="%H" --quiet)
+
 
 CC=clang++
-CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC
-#CFLAGS += -std=c++11
-#INC= -I${THRIFT_DIR} -I${BOOST_DIR}  -I. -I../public 
+CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC -DAPP_VERSION=\"$(APP_VERSION)\"
 INC= -I. -I../framework -I..
 LDFLAGS=-lprotobuf -lrt -lpthread -ltcmalloc
 

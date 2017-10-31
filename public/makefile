@@ -15,11 +15,7 @@ STATIC_LIB=$(patsubst %,lib%.a,$(LIB_NAME))
 
 
 CC=clang++
-#CC=clang++
 CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC
-#CFLAGS += -std=c++11
-BOOST_DIR = /usr/local/include/boost/
-#INC= -I${BOOST_DIR}  -I. -I../public 
 INC= -I. -I..
 
 ifeq ($(release), 1)
@@ -55,7 +51,7 @@ proto :
 	then  \
         echo "proto files already exists"   ;\
 	else  \
-		protoc --cpp_out=. *.proto   ;\
+		/usr/bin/protoc --cpp_out=. *.proto   ;\
         echo "generate proto files successfully"  ;\
 	fi
 

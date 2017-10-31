@@ -15,12 +15,7 @@ STATIC_LIB=$(patsubst %,lib%.a,$(LIB_NAME))
 
 
 CC=clang++
-#CC=clang++
 CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC
-#CFLAGS += -std=c++11
-BOOST_DIR = /usr/local/include/boost/
-THRIFT_DIR = /usr/local/include/thrift
-#INC= -I${THRIFT_DIR} -I${BOOST_DIR}  -I. -I../public 
 INC= -I.
 
 ifeq ($(release), 1)

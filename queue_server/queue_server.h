@@ -99,8 +99,6 @@ public:
     int send_event(SyncQueueData* data) ;
 
 protected:
-    const char* version() { return "multi-thread version 1.0 compiled at " __TIME__ " "  __DATE__   ; } ;
-
     int load_cluster_config(const Document& root) ;
     int load_reload_config(const Document& root) ;
 
