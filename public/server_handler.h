@@ -1,9 +1,10 @@
 /*
  * server_handler.h
- * Author: lxyfirst@163.com
+ * Author: lixingyi
  */
 
-#pragma once
+#ifndef SERVER_HANDLER_H_
+#define SERVER_HANDLER_H_
 
 #include <stdint.h>
 #include <tr1/functional>
@@ -39,6 +40,8 @@ protected:
 
     void on_connected() ;
 
+    void on_disconnect(int error_type) ;
+
     int process_register_request(const framework::packet_info* pi);
     int process_status_request(const framework::packet_info* pi);
 private:
@@ -49,3 +52,4 @@ private:
     int m_last_time ;
 };
 
+#endif /* SERVER_HANDLER_H_ */

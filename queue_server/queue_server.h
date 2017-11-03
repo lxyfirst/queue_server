@@ -79,7 +79,7 @@ public:
         return vote_data.node_id() == m_node_info.leader_id ? vote_data : empty_data ;
     }
 
-    int majority_count() const { return (m_cluster_info.size()+1) >>1  ; } ;
+    int majority_count() const { return (m_cluster_info.size()) >>1  ; } ;
 
     bool is_leader() const { return m_node_info.node_id == m_node_info.leader_id ; } ;
     void set_leader(const VoteData& vote_data)  ;
@@ -99,8 +99,9 @@ public:
     int send_event(SyncQueueData* data) ;
 
 protected:
-    int load_cluster_config(const Document& root) ;
-    int load_reload_config(const Document& root) ;
+    int load_cluster_config(const Value& root) ;
+    int load_node_config(const Value& root) ;
+    int load_reload_config(const Value& root) ;
 
     int on_init() ;
 
@@ -139,7 +140,6 @@ private:
     ServerManager m_server_manager ;
     std::set<int> m_push_sync_set ;
     ServerInfoContainer m_cluster_info ;   // node list in cluster
-    ServerInfo m_self_info ;               // self info in cluster
 
     QueueLogContainer m_queue_log ;
     AsyncProcessorManager m_processor_manager ;

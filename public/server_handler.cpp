@@ -45,7 +45,14 @@ int ServerHandler::get_packet_info(const char* data,int size,packet_info* pi)
 void ServerHandler::on_closed()
 {
 
-    m_owner->free_connection(m_remote_server_id,this) ;
+    m_owner->free_connection(this) ;
+
+}
+
+void ServerHandler::on_disconnect(int error_type)
+{
+
+    m_owner->unregister_connection(m_remote_server_id,this) ;
 
 }
 
@@ -95,9 +102,16 @@ int ServerHandler::process_register_request(const packet_info* pi)
     int node_type = request.body.node_type() ;
     int node_id = request.body.node_id() ;
     
-    m_remote_server_id = get_server_id( (int8_t)node_type,(int8_t)node_id );
-    return m_owner->register_connection(m_remote_server_id,this) ;
+    int remote_server_id = get_server_id( (int8_t)node_type,(int8_t)node_id );
+    //register success
+    if( m_owner->register_connection(remote_server_id,this) ==0)
+    {
+        m_remote_server_id = remote_server_id ;
+        return 0 ;
+    }
 
+    //register failed
+    return -1 ;
 }
 
 int ServerHandler::process_status_request(const packet_info* pi)
@@ -109,6 +123,8 @@ int ServerHandler::process_status_request(const packet_info* pi)
 
 void ServerHandler::check_connection()
 {
+    if(!is_connected() ) return ;
+
     int silence = time(0) - m_last_time ;
     if(silence  < HEATBEAT_TIME )
     {

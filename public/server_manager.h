@@ -95,11 +95,15 @@ public:
      * @return 0 on success
      */
     int register_connection(int remote_server_id,ServerHandler* handler) ;
+
+    void unregister_connection(int remote_server_id,ServerHandler* handler) ;
+
+    void check_idle_connection() ;
     
     /*
      * @brief free connection
      */
-    void free_connection(int remote_server_id,ServerHandler* handler) ;
+    void free_connection(ServerHandler* handler) ;
 
     /*
      * @brief callback by connection when receive packet

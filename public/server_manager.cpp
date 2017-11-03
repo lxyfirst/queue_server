@@ -50,23 +50,19 @@ void ServerManager::fini()
 int ServerManager::create_connection(const char* host,int port,int remote_server_id)
 {
     ServerContainer::iterator it = m_server_container.find(remote_server_id) ;
-    if( it !=m_server_container.end() )
-    {
-        // use keepalive instead of  heartbeat
-        //it->second->check_connection() ;
-        return -2 ;
-    }
+    if( it !=m_server_container.end() ) return -1 ;
     
     ServerHandler* server_handler = new ServerHandler(this,m_local_server_id) ;
-    if(server_handler == NULL) return -1 ;
+    if(server_handler == NULL) return -2 ;
     
     if(server_handler->init(*m_reactor,host,port) !=0)
     {
-        debug_log_format((*m_logger),"init connection failed , remote_server_id:%#x",remote_server_id) ;
+        trace_log_format((*m_logger),"init connection failed , remote_server_id:%#x",remote_server_id) ;
         delete server_handler;
-        return -1 ;
+        return -3 ;
     }
     
+    trace_log_format((*m_logger),"init connection success , remote_server_id:%#x",remote_server_id) ;
     //m_server_container[remote_server_id] = server_handler ;
     m_conn_container.insert(server_handler) ;
     return 0 ;    
@@ -91,29 +87,32 @@ int ServerManager::register_connection(int remote_server_id,ServerHandler* handl
     ServerContainer::iterator it = m_server_container.find(remote_server_id) ;
     if( (it != m_server_container.end()) && (it->second != handler)  )
     {
-        info_log_format((*m_logger),"server already exist server_id:%#x",remote_server_id) ;
+        info_log_format((*m_logger),"register server failed , exist remote_server_id:%#x",remote_server_id) ;
         return -1 ;
     }
 
-    info_log_format((*m_logger),"server registered remote_server_id:%#x",remote_server_id) ;
+    info_log_format((*m_logger),"register server success , remote_server_id:%#x",remote_server_id) ;
     m_server_container[remote_server_id] = handler ;
     on_server_opend(remote_server_id) ;
 
     return 0 ;
 }
 
-void ServerManager::free_connection(int remote_server_id,ServerHandler* handler)
+void ServerManager::unregister_connection(int remote_server_id,ServerHandler* handler)
 {
-    info_log_format((*m_logger),"free connection remote_server_id:%#x",remote_server_id) ;
+    info_log_format((*m_logger),"unregister server remote_server_id:%#x",remote_server_id) ;
     ServerContainer::iterator it = m_server_container.find(remote_server_id) ;
     if( (it != m_server_container.end() ) && (it->second == handler) )
     {
         m_server_container.erase(it) ;
         on_server_closed(remote_server_id) ;
     }
-    
+
+}
+
+void ServerManager::free_connection(ServerHandler* handler)
+{
     m_conn_container.erase(handler) ;
-    
     delete handler ;
 }
 
@@ -148,14 +147,27 @@ int ServerManager::broadcast(int server_type,framework::packet* p)
 
 void ServerManager::check_server_connect(int server_type,const ServerInfoContainer& server_list)
 {
-    for(auto& pair : server_list)
+    ServerInfoContainer::const_iterator it = server_list.begin() ;
+    for(it = server_list.begin();it!= server_list.end();++it)
     {
-        int remote_server_id=get_server_id(server_type,pair.first);
-        if(pair.second.online_status && (m_local_server_id != remote_server_id) )
+        int remote_server_id=get_server_id(server_type,it->first);
+        if(it->second.online_status && (m_local_server_id != remote_server_id) )
         {
-            create_connection(pair.second.host,pair.second.port,remote_server_id);
+            create_connection(it->second.host,it->second.port,remote_server_id);
         }
     }
 
+    check_idle_connection() ;
 
+}
+
+void ServerManager::check_idle_connection()
+{
+    ConnectionContainer::iterator it = m_conn_container.begin() ;
+    while(it!=m_conn_container.end() )
+    {
+        ServerHandler* server_handler = *it ;
+        ++it ;
+        server_handler->check_connection() ;
+    }
 }

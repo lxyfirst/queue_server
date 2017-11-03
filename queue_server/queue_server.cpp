@@ -41,15 +41,16 @@ int QueueServer::on_init()
         error_return(-1,"parse config failed") ;
     }
 
-    if(load_reload_config(config)!=0) return -1 ;
+    if(load_reload_config(config)!=0)  error_return(-1,"load config failed") ;
 
     if(m_log_thread.start() !=0) error_return(-1,"init log thread failed") ;
 
-    if(load_cluster_config(config)!=0) return -1 ;
+
+    if(load_node_config(config)!=0) error_return(-1,"load node failed") ;
     
     //init event queue
     if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
-    eventfd_handler::callback_type callback = std::bind(&QueueServer::on_event,this,std::placeholders::_1) ;
+    auto callback = std::bind(&QueueServer::on_event,this,std::placeholders::_1) ;
     if(m_event_handler.init(reactor(),callback )!=0 )
     {
         error_return(-1,"init eventfd failed") ;
@@ -64,7 +65,37 @@ int QueueServer::on_init()
     return 0 ;
 }
 
-int QueueServer::load_cluster_config(const Document& root)
+int QueueServer::load_cluster_config(const Value& cluster_node_list)
+{
+    static const JsonFieldInfo node_field_list{
+        {"node_id",rapidjson::kNumberType },
+        {"host",rapidjson::kStringType},
+        {"port",rapidjson::kNumberType},
+
+    } ;
+
+    //load cluster config
+    for(int i = 0 ; i < cluster_node_list.Size();++i)
+    {
+        auto& node = cluster_node_list[i];
+        if(!json_check_field(node,node_field_list) ) error_return(-1,"missing or invalid field") ;
+        int node_id = node["node_id"].GetInt();
+        if(m_cluster_info.count(node_id) >0)  continue ; 
+
+        ServerInfo& server_info =m_cluster_info[node_id] ;
+        server_info.host[sizeof(server_info.host)-1] = '\0' ;
+        strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
+        server_info.node_id = node_id ;
+        server_info.port = node["port"].GetInt() ;
+        server_info.online_status = 1;
+    }
+
+    return 0 ;
+
+}
+
+
+int QueueServer::load_node_config(const Value& root)
 {
     static const JsonFieldInfo cluster_field_list{
         {"cluster_node_list",rapidjson::kArrayType},
@@ -74,29 +105,7 @@ int QueueServer::load_cluster_config(const Document& root)
         {"port",rapidjson::kNumberType},
     } ;
 
-    static const JsonFieldInfo node_field_list{
-        {"node_id",rapidjson::kNumberType },
-        {"host",rapidjson::kStringType},
-        {"port",rapidjson::kNumberType},
-
-    } ;
-
     if(!json_check_field(root,cluster_field_list) ) error_return(-1,"missing or invalid field") ;
-    const Value& cluster_node_list = root["cluster_node_list"] ;
-
-    //load cluster config
-    for(int i = 0 ; i < cluster_node_list.Size();++i)
-    {
-        auto& node = cluster_node_list[i];
-        if(!json_check_field(node,node_field_list) ) error_return(-1,"missing or invalid field") ;
-        int node_id = node["node_id"].GetInt();
-        ServerInfo& server_info =m_cluster_info[node_id] ;
-        server_info.host[sizeof(server_info.host)-1] = '\0' ;
-        strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
-        server_info.node_id = node_id ;
-        server_info.port = node["port"].GetInt() ;
-        server_info.online_status = 1;
-    }
 
     //load self node config
     m_node_info.node_type = root["node_type"].GetInt();
@@ -113,15 +122,15 @@ int QueueServer::load_cluster_config(const Document& root)
     m_self_vote_info.set_port(client_port ) ;
 
     int16_t local_server_id = get_server_id(m_node_info.node_type,m_node_info.node_id) ;
-    m_server_manager.init(&m_logger,&reactor(),this,local_server_id) ;
-    ServerInfoContainer::iterator it = m_cluster_info.find(m_node_info.node_id) ;
-    if(it == m_cluster_info.end() ) error_return(-1,"cannot get node info") ;
-    m_self_info = it->second ;
-    m_cluster_info.erase(it) ;
+    if(m_server_manager.init(&m_logger,&reactor(),this,local_server_id) !=0) error_return(-1,"init manager failed") ;
+
+    auto pair = m_cluster_info.find(m_node_info.node_id) ;
+    if(pair == m_cluster_info.end() ) error_return(-1,"cannot get node info") ;
+    ServerInfo& m_self_info = pair->second ;
 
     using std::placeholders::_1 ;
     using std::placeholders::_2 ;
-    tcp_acceptor::callback_type server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
+    auto server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
     if(m_server_acceptor.init(reactor(),m_self_info.host,m_self_info.port,server_callback )!=0)
     {
         error_return(-1,"init server acceptor failed") ;
@@ -131,7 +140,7 @@ int QueueServer::load_cluster_config(const Document& root)
 
 }
 
-int QueueServer::load_reload_config(const Document& root)
+int QueueServer::load_reload_config(const Value& root)
 {
     static const JsonFieldInfo field_list{
         {"log_prefix",rapidjson::kStringType},
@@ -161,6 +170,8 @@ int QueueServer::load_reload_config(const Document& root)
     }
 
     m_log_thread.init(log_prefix.GetString(),log_level.GetInt());
+
+    if(load_cluster_config(root["cluster_node_list"]) !=0 ) error_return(-1,"load cluster failed") ;
 
     const Value& queue_size = root["queue_size"] ;
     const Value& queue_log_size = root["queue_log_size"] ;
@@ -250,7 +261,7 @@ void QueueServer::check_leader()
     if(!is_running() ) return ;
 
     //no cluster
-    if(m_cluster_info.size() ==0)
+    if(m_cluster_info.size() <=1)
     {
         m_node_info.leader_id = m_node_info.node_id ;
         return ;
