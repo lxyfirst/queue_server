@@ -48,7 +48,12 @@ public:
 
     int size() const { return m_message_container.size() ; } ;
     int max_id() const { return m_seq_id ; } ;
+
+    /*
+     * @brief 队列消息被延期消费的时间统计
+     */
     int wait_status() const ;
+
     /*
      * @brief 发布消息
      * @param request 消息对象

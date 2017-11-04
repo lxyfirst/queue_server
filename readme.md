@@ -52,6 +52,7 @@
    
 ### 演进方向
  1. 消息日志持久化存储。  
+ 2. long-polling , 只有在master节点直接接受tcp协议请求时适合使用该模式。
 
 ### 性能测试
    使用php进行简单的性能测试，同网段2台机器，一台运行客户端，一台运行服务端，
@@ -90,6 +91,7 @@ total:10000 fail:0 min:0.000278 max:0.004305 avg:0.000584
     "queue_size":100000 ,      //每个队列长度
     "queue_log_size":100000 ,  //队列日志总容量
     "queue_sync_rate":3000  ,  //节点数据同步频率
+    "forward_request":1 ,      //转发请求到master，如果关闭，slave节点收到请求后将直接返回master节点信息
 
     "cluster_node_list" : [       //集群节点配置，id，内部服务ip和端口
         {"node_id":1 , "host":"127.0.0.1", "port":1101 },
@@ -121,7 +123,9 @@ total:10000 fail:0 min:0.000278 max:0.004305 avg:0.000584
  size : 队列长度 。  
  max_size : 队列最大长度。  
  max_id : 当前消息id 。    
- leader_id ： master节点id 。    
+ leader_node_id ： master节点id 。    
+ leader_host： master节点对外服务IP。    
+ leader_port： master节点对外服务端口。    
  node_id : 处理请求节点id 。   
  log_size : 消息日志数量。   
  max_log_size ： 消息日志最大数量。    
