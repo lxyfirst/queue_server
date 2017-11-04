@@ -38,6 +38,11 @@ bool is_leader()
     return get_app().is_leader() ; 
 }
 
+bool is_forward_request()
+{
+    return get_app().is_forward_request() ;
+}
+
 int notify_sync_event(SyncQueueData* data)
 {
     return get_app().send_event(data) ;

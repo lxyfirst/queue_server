@@ -146,10 +146,18 @@ int ClientTcpHandler::process_json_request(const packet_info* pi)
     debug_log_format(get_logger(),"recv host:%s action:%d size:%d",host,action,pi->size) ;
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
-        SourceData source ;
-        source.is_tcp = 1 ;
-        source.id = this->get_id();
-        return get_worker().forward_to_leader(source,pi->data,pi->size) ;
+        if( is_forward_request() )
+        {
+            SourceData source ;
+            source.is_tcp = 1 ;
+            source.id = this->get_id();
+            return get_worker().forward_to_leader(source,pi->data,pi->size) ;
+        }
+
+        //cannot forward , return leader info
+        request.RemoveAllMembers() ;
+        request.AddMember(FIELD_ACTION,ACTION_GET_LEADER,request.GetAllocator() );
+
     }
 
     if(QueueProcessor::process(request)==0)

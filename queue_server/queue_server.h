@@ -80,7 +80,7 @@ public:
     }
 
     int majority_count() const { return (m_cluster_info.size()) >>1  ; } ;
-
+    bool is_forward_request() const { return m_forward_request ; } ;
     bool is_leader() const { return m_node_info.node_id == m_node_info.leader_id ; } ;
     void set_leader(const VoteData& vote_data)  ;
     //get leader connectioin
@@ -150,6 +150,7 @@ private:
     NodeData m_node_info ;          //  node info and status
     int m_sync_counter ;
     int m_sync_time ;
+    bool m_forward_request ;
 
 };
 

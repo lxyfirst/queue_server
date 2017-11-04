@@ -39,15 +39,20 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
 
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {
-        SourceData source ;
-        source.is_tcp = 0 ;
-        source.addr = p->addr ;
-        if(get_worker().forward_to_leader(source,p->data,p->data_size)!=0 )
+        if( is_forward_request() )
         {
-        	this->send(&p->addr,"{}",2) ;
+            SourceData source ;
+            source.is_tcp = 0 ;
+            source.addr = p->addr ;
+            if(get_worker().forward_to_leader(source,p->data,p->data_size)==0 )
+            {
+                return 0 ;
+            }
         }
 
-        return 0 ;
+        //cannot forward , return leader info
+        request.RemoveAllMembers() ;
+        request.AddMember(FIELD_ACTION,ACTION_GET_LEADER,request.GetAllocator() );
     }
 
     if( QueueProcessor::process(request) ==0)

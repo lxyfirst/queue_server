@@ -16,7 +16,7 @@
 using namespace framework ;
 
 
-QueueServer::QueueServer():m_worker(m_log_thread)
+QueueServer::QueueServer():m_worker(m_log_thread),m_forward_request(true)
 {
    m_sync_timer.set_callback(this,&QueueServer::on_sync_timeout) ;
 
@@ -185,6 +185,7 @@ int QueueServer::load_reload_config(const Value& root)
     if(m_queue_config.queue_size < 128 || m_queue_config.log_size < 128 ) error_return(-1,"invalid size");
     if( m_queue_config.sync_rate < 1) error_return(-1,"invalid limit") ;
 
+    m_forward_request = json_get_value(root,"forward_request",1) == 1 ? true : false ;
     if(load_virtual_queue(root["virtual_queue_list"])!=0) error_return(-1,"load virtual queue failed") ;
 
     return 0 ;

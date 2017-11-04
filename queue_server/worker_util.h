@@ -13,7 +13,10 @@ VoteData& get_leader_vote_data(VoteData& data);
 VoteData& get_self_vote_data(VoteData& data);
 
 int max_queue_size() ;
+
 bool is_leader() ;
+
+bool is_forward_request() ;
 
 int notify_sync_event(SyncQueueData* data) ;
 

@@ -6,6 +6,7 @@ class QueueClient
     private $timeout = null ;
     private $host_list = null ;
     private $queue_name = '' ;
+    private $master = null ;
 
     function __construct( $host_list,$queue_name='',$tcp_flag=false,$timeout=2)
     {
@@ -29,6 +30,8 @@ class QueueClient
         $sock = null ;
         foreach($this->host_list as $host)
         {
+            if(!empty($this->master)) $host = $this->master ;
+
             if($this->tcp_flag)  $protocol = 'tcp://'  ;
             else $protocol =  'udp://' ;
             if(!empty($sock) ) fclose($sock) ;
@@ -41,11 +44,17 @@ class QueueClient
             $buf = fread($sock, 10240);
             if(!$buf) continue ;
             $result = json_decode($buf,true) ;
-            if ( is_array($result) && $result['seq'] == $seq )
+            if ( !is_array($result) ) continue ;
+            if ( $result['seq'] == $seq )
             {
                 unset($result['seq']) ;
                 return $result ;
             }
+            else if( isset($result['leader_host']) )
+            {
+                $this->master = ['host'=>$result['leader_host'],'port'=>$result['leader_port'] ] ;
+            }
+            
             
         }
 
@@ -200,6 +209,7 @@ function bench_process($process,$count,$host_list)
 
 $host_list = array(
     array('host'=>'127.0.0.1','port'=>1111), 
+    array('host'=>'127.0.0.1','port'=>1113), 
 ) ;
 
 //bench_process(4,10000,$host_list) ;
