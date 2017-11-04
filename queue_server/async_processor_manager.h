@@ -39,11 +39,11 @@ protected:
 
 
 
-class MajorityProcessor : public framework::base_fsm , public framework::base_timer
+class MajorityProcessor : public framework::base_fsm
 {
 public:
-    MajorityProcessor():m_status(STATUS_INIT),m_wait_count(0),m_success_count(0) {  } ;
-    virtual ~MajorityProcessor() { } ;
+    MajorityProcessor() ;
+    virtual ~MajorityProcessor()  ;
 
     int enter(framework::fsm_manager* fm,int event_type,void* arg);
 
@@ -63,7 +63,7 @@ protected:
     virtual void on_result(bool success) = 0 ;
 
 protected:
-
+    framework::base_timer m_timer ;
     int8_t m_status ;
     int8_t m_wait_count ;
     int8_t m_success_count ;

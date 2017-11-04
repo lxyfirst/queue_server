@@ -136,11 +136,13 @@ int ClientTcpHandler::process_packet(const packet_info* pi)
 int ClientTcpHandler::process_json_request(const packet_info* pi)
 {
     Document request ;
-    if(json_parse_request(pi->data,pi->data + pi->size,request)!=0) return -1 ;
+    if(json_decode(pi->data,pi->data + pi->size,request)!=0) return -1 ;
     char host[16] = {0} ;
     this->get_remote_addr(host,sizeof(host)) ;
 
-    int action = request[FIELD_ACTION].GetInt() ;
+    int action = json_get_value(request,FIELD_ACTION,0) ;
+    if(action <= 0 ) return -1 ;
+
     debug_log_format(get_logger(),"recv host:%s action:%d size:%d",host,action,pi->size) ;
     if((!is_leader() ) && action < ACTION_LOCAL_START)
     {

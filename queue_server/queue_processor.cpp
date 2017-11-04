@@ -33,44 +33,23 @@ int QueueProcessor::fill_response(Document& request,int code,const char* reason)
     return 0 ;
 }
 
-
-
-
 int QueueProcessor::process(Document& request)
 {
-    int action = request[FIELD_ACTION].GetInt() ;
+    int action = json_get_value(request,FIELD_ACTION,0);
 
-    if(action == ACTION_LIST || action == ACTION_LOCAL_LIST ) return process_list(request) ;
-
-    if(!(request.HasMember(FIELD_QUEUE) && request[FIELD_QUEUE].IsString())) return -1 ;
-    std::string queue_name = request[FIELD_QUEUE].GetString() ;
-
-    if(action == ACTION_PRODUCE )
+    switch(action)
     {
-        const QueueNameContainer* queue_list = get_worker().real_queue_name(queue_name);
-
-        if (queue_list)
-        {
-
-            for(auto& name : *queue_list)
-            {
-                Queue* queue = get_worker().get_queue(name) ;
-                if(queue)  process_produce(request,*queue) ;
-            }
-
-        }
-        else
-        {
-            Queue* queue = get_worker().get_queue(queue_name) ;
-            if(queue) process_produce(request,*queue) ;
-        }
-
-        request.RemoveMember(FIELD_DATA) ;
-        request.RemoveMember(FIELD_DELAY) ;
-        request.RemoveMember(FIELD_TTL) ;
-        request.RemoveMember(FIELD_RETRY) ;
-        return 0 ;
+    case ACTION_LIST:
+    case ACTION_LOCAL_LIST:
+        return process_list(request) ;
+    case ACTION_GET_LEADER:
+        return process_get_leader(request) ;
     }
+
+    std::string queue_name = json_get_value(request,FIELD_QUEUE,"") ;
+    if(queue_name.size() <1 ) return -1 ;
+
+    if(action == ACTION_PRODUCE ) return process_virtual_produce(request,queue_name) ;
 
     Queue* queue = get_worker().get_queue(queue_name) ;
     if(queue == NULL) return fill_response(request,-1,"invalid queue") ;
@@ -93,6 +72,32 @@ int QueueProcessor::process(Document& request)
     }
 
     return 0 ;
+}
+
+
+int QueueProcessor::process_virtual_produce(Document& request,const std::string& queue_name)
+{
+    const QueueNameContainer* queue_list = get_worker().real_queue_name(queue_name);
+    if (queue_list != NULL)
+    {
+         for(auto& name : *queue_list)
+         {
+             Queue* queue = get_worker().get_queue(name) ;
+             if(queue)  process_produce(request,*queue) ;
+         }
+
+    }
+    else
+    {
+         Queue* queue = get_worker().get_queue(queue_name) ;
+         if(queue) process_produce(request,*queue) ;
+    }
+
+     request.RemoveMember(FIELD_DATA) ;
+     request.RemoveMember(FIELD_DELAY) ;
+     request.RemoveMember(FIELD_TTL) ;
+     request.RemoveMember(FIELD_RETRY) ;
+     return 0 ;
 }
 
 static const JsonFieldInfo PRODUCE_FILED_LIST{
@@ -182,6 +187,18 @@ int QueueProcessor::process_list(Document& request)
     request.AddMember("queue_list",queue_list,request.GetAllocator()) ;
 
     fill_server_info(request) ;
+
+    return fill_response(request) ;
+}
+
+int QueueProcessor::process_get_leader(Document& request)
+{
+
+    VoteData leader_info ;
+    get_leader_vote_data(leader_info);
+    request.AddMember("leader_node_id",leader_info.node_id(),request.GetAllocator()) ;
+    request.AddMember("leader_host",leader_info.host(),request.GetAllocator()) ;
+    request.AddMember("leader_port",leader_info.port(),request.GetAllocator()) ;
 
     return fill_response(request) ;
 }

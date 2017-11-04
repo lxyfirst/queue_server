@@ -27,12 +27,14 @@ int ClientUdpHandler::process_packet(const udp_packet* p)
     if(p->data[0] != '{') return 0 ;
 
     Document request ;
-    if(json_parse_request(p->data,p->data + p->data_size,request)!=0) return 0 ;
+    if(json_decode(p->data,p->data + p->data_size,request)!=0) return 0 ;
 
     char remote_host[16] = {0} ;
     framework::addr2str(remote_host,sizeof(remote_host),&p->addr) ;
 
-    int action = request[FIELD_ACTION].GetInt() ;
+    int action = json_get_value(request,FIELD_ACTION,0) ;
+    if(action <= 0 ) return -1 ;
+
     debug_log_format(get_logger(),"recv host:%s action:%d size:%d",remote_host,action,p->data_size) ;
 
     if((!is_leader() ) && action < ACTION_LOCAL_START)

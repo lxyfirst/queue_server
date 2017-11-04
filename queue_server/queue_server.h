@@ -102,6 +102,7 @@ protected:
     int load_cluster_config(const Value& root) ;
     int load_node_config(const Value& root) ;
     int load_reload_config(const Value& root) ;
+    int load_virtual_queue(const Value& root) ;
 
     int on_init() ;
 

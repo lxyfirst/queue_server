@@ -14,12 +14,12 @@
 
 using namespace framework ;
 
-int json_parse_request(const char* begin,const char* end,Document& request)
+int json_decode(const char* begin,const char* end,Document& request)
 {
     if(request.Parse(begin,end-begin).HasParseError()) return -1 ;
 
     if(!request.IsObject()) return -2 ;
-    if(!(request.HasMember(FIELD_ACTION) && request[FIELD_ACTION].IsInt()) ) return -3 ;
+
     return 0 ;
 
 }
@@ -97,9 +97,16 @@ int json_get_value(const Value& json,const char* key,int default_value)
 {
     if(!json.IsObject() ) return default_value ;
     Value::ConstMemberIterator it = json.FindMember(key) ;
-    if(it == json.MemberEnd() ) return default_value ;
-    if(!it->value.IsInt()) return default_value ;
+    if(it == json.MemberEnd() || !it->value.IsInt() ) return default_value ;
     return it->value.GetInt() ;
+}
+
+const char* json_get_value(const Value& json,const char* key,const char* default_value)
+{
+    if(!json.IsObject() ) return default_value ;
+    Value::ConstMemberIterator it = json.FindMember(key) ;
+    if(it == json.MemberEnd() || !it->value.IsString() ) return default_value ;
+    return it->value.GetString() ;
 }
 
 
@@ -428,7 +435,7 @@ int Worker::process_forward_request(ClientTcpHandler* handler,const packet_info*
     Document request ;
     const char* begin =forward.body.data().c_str() ;
     const char* end = begin + forward.body.data().length() ;
-    if(json_parse_request(begin,end,request)!=0) return -1 ;
+    if(json_decode(begin,end,request)!=0) return -1 ;
 
     if(QueueProcessor::process(request) !=0) return -1 ;
 

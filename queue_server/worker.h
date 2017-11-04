@@ -139,7 +139,7 @@ bool json_check_field(const Value&json,const JsonFieldInfo& field_list) ;
  * @brief parse request data
  * @return 0 on success
  */
-int json_parse_request(const char* begin,const char* end,Document& request) ;
+int json_decode(const char* begin,const char* end,Document& request) ;
 
 /**
  * @brief serialize json object
@@ -152,8 +152,9 @@ bool json_encode(const Value& json,StringBuffer& buffer) ;
  * @param json json object
  * @param key
  * @param default_value
- * @return int value
+ * @return  value
  */
 int json_get_value(const Value& json,const char* key,int default_value);
 
+const char* json_get_value(const Value& json,const char* key,const char* default_value);
 

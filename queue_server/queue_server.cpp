@@ -41,13 +41,27 @@ int QueueServer::on_init()
         error_return(-1,"parse config failed") ;
     }
 
+    if(load_node_config(config)!=0) error_return(-1,"load node failed") ;
+
     if(load_reload_config(config)!=0)  error_return(-1,"load config failed") ;
 
     if(m_log_thread.start() !=0) error_return(-1,"init log thread failed") ;
 
+    int16_t local_server_id = get_server_id(m_node_info.node_type,m_node_info.node_id) ;
+    if(m_server_manager.init(&m_logger,&reactor(),this,local_server_id) !=0) error_return(-1,"init manager failed") ;
 
-    if(load_node_config(config)!=0) error_return(-1,"load node failed") ;
-    
+    if(m_cluster_info.count(m_node_info.node_id) <1 ) error_return(-1,"cannot get node info") ;
+    const ServerInfo& m_self_info = m_cluster_info[m_node_info.node_id] ;
+
+    using std::placeholders::_1 ;
+    using std::placeholders::_2 ;
+    auto server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
+    if(m_server_acceptor.init(reactor(),m_self_info.host,m_self_info.port,server_callback )!=0)
+    {
+        error_return(-1,"init server acceptor failed") ;
+    }
+
+
     //init event queue
     if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
     auto callback = std::bind(&QueueServer::on_event,this,std::placeholders::_1) ;
@@ -75,20 +89,30 @@ int QueueServer::load_cluster_config(const Value& cluster_node_list)
     } ;
 
     //load cluster config
+    ServerInfoContainer cluster_info ;
     for(int i = 0 ; i < cluster_node_list.Size();++i)
     {
         auto& node = cluster_node_list[i];
         if(!json_check_field(node,node_field_list) ) error_return(-1,"missing or invalid field") ;
         int node_id = node["node_id"].GetInt();
-        if(m_cluster_info.count(node_id) >0)  continue ; 
-
-        ServerInfo& server_info =m_cluster_info[node_id] ;
-        server_info.host[sizeof(server_info.host)-1] = '\0' ;
-        strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
-        server_info.node_id = node_id ;
-        server_info.port = node["port"].GetInt() ;
-        server_info.online_status = 1;
+        //only add or remove node
+        if(m_cluster_info.count(node_id) >0)
+        {
+            cluster_info[node_id] = m_cluster_info[node_id] ;
+            continue ;
+        }
+        else
+        {
+            ServerInfo& server_info = cluster_info[node_id] ;
+            server_info.host[sizeof(server_info.host)-1] = '\0' ;
+            strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
+            server_info.node_id = node_id ;
+            server_info.port = node["port"].GetInt() ;
+            server_info.online_status = 1;
+        }
     }
+
+    m_cluster_info.swap(cluster_info) ;
 
     return 0 ;
 
@@ -121,21 +145,6 @@ int QueueServer::load_node_config(const Value& root)
     m_self_vote_info.set_host( client_host ) ;
     m_self_vote_info.set_port(client_port ) ;
 
-    int16_t local_server_id = get_server_id(m_node_info.node_type,m_node_info.node_id) ;
-    if(m_server_manager.init(&m_logger,&reactor(),this,local_server_id) !=0) error_return(-1,"init manager failed") ;
-
-    auto pair = m_cluster_info.find(m_node_info.node_id) ;
-    if(pair == m_cluster_info.end() ) error_return(-1,"cannot get node info") ;
-    ServerInfo& m_self_info = pair->second ;
-
-    using std::placeholders::_1 ;
-    using std::placeholders::_2 ;
-    auto server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
-    if(m_server_acceptor.init(reactor(),m_self_info.host,m_self_info.port,server_callback )!=0)
-    {
-        error_return(-1,"init server acceptor failed") ;
-    }
-
     return 0 ;
 
 }
@@ -151,13 +160,6 @@ int QueueServer::load_reload_config(const Value& root)
         {"virtual_queue_list",rapidjson::kArrayType},
 
     } ;
-
-    static const JsonFieldInfo virtual_field_list{
-        {"name",rapidjson::kStringType},
-        {"queue_list",rapidjson::kArrayType},
-
-    } ;
-
 
     if(!json_check_field(root,field_list) ) error_return(-1,"missing or invalid field") ;
 
@@ -183,10 +185,20 @@ int QueueServer::load_reload_config(const Value& root)
     if(m_queue_config.queue_size < 128 || m_queue_config.log_size < 128 ) error_return(-1,"invalid size");
     if( m_queue_config.sync_rate < 1) error_return(-1,"invalid limit") ;
 
+    if(load_virtual_queue(root["virtual_queue_list"])!=0) error_return(-1,"load virtual queue failed") ;
+
+    return 0 ;
+}
+
+int QueueServer::load_virtual_queue(const Value& virtual_list)
+{
+    static const JsonFieldInfo virtual_field_list{
+        {"name",rapidjson::kStringType},
+        {"queue_list",rapidjson::kArrayType},
+
+    } ;
+
     VirtualQueueContainer virtual_queue  ;
-
-    const Value& virtual_list = root["virtual_queue_list"];
-
     if(!virtual_list.IsArray()) error_return(-1,"invalid virtual_queue_list") ;
     for(int i=0 ; i < virtual_list.Size() ;++i)
     {
@@ -206,9 +218,7 @@ int QueueServer::load_reload_config(const Value& root)
 
     }
 
-
     m_worker.init(virtual_queue) ;
-
 
     return 0 ;
 }

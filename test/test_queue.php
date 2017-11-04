@@ -2,33 +2,21 @@
 
 class QueueClient
 {
-    private $sock = null ;
     private $tcp_flag = false ;
     private $timeout = null ;
     private $host_list = null ;
     private $queue_name = '' ;
-    private $master = null ;
 
     function __construct( $host_list,$queue_name='',$tcp_flag=false,$timeout=2)
     {
         $this->host_list = $host_list ;
         $this->queue_name = $queue_name ;
         $this->tcp_flag =  $tcp_flag ;
-        $this->timeout =  array('sec' => $timeout, 'usec' => 0) ;
+        $this->timeout =  $timeout ;
 
     }
 
-    function close()
-    {
-        if($this->sock)  
-        {
-            socket_close($this->sock) ;
-            $this->sock = null ; 
-        }
-     
-    }
-   
-       
+      
     /*
      * @brief  send request and recv response 
      * @array
@@ -38,34 +26,25 @@ class QueueClient
         $seq = rand() ;
         $request['seq']=$seq ;
         $send_data = json_encode($request) ;
+        $sock = null ;
         foreach($this->host_list as $host)
         {
-            if(!empty($this->master)) $host = $this->master ;
-            $this->close() ;  
-            if($this->tcp_flag) $this->sock = socket_create(AF_INET, SOCK_STREAM,SOL_TCP);
-            else $this->sock = socket_create(AF_INET, SOCK_DGRAM,SOL_UDP);
-            socket_set_option($this->sock, SOL_SOCKET, SO_RCVTIMEO, $this->timeout);
-            socket_set_option($this->sock, SOL_SOCKET, SO_SNDTIMEO, $this->timeout);
-            if(!socket_connect($this->sock,$host['host'], $host['port']) ) continue ;
+            if($this->tcp_flag)  $protocol = 'tcp://'  ;
+            else $protocol =  'udp://' ;
+            if(!empty($sock) ) fclose($sock) ;
+            $sock = fsockopen('tcp://' . $host['host'],$host['port'],$errno,$errstr,$this->timeout);
+            if(!$sock) continue ;
+            stream_set_timeout($sock,$this->timeout) ;
 
-            $ret = socket_send($this->sock, $send_data, strlen($send_data), 0);
+            $ret = fwrite($sock, $send_data, strlen($send_data));
             if($ret != strlen($send_data) )  continue ;
-            $ret = socket_recv($this->sock, $buf, 10240 , 0);
-            $this->close() ;
-            if(!$ret) continue ;
+            $buf = fread($sock, 10240);
+            if(!$buf) continue ;
             $result = json_decode($buf,true) ;
             if ( is_array($result) && $result['seq'] == $seq )
             {
-                if( $result['code'] == -2 ) 
-                {
-                    $this->master = array('host'=>$result['master_host'],'port'=>$result['master_port']) ;
-                    continue ;
-                }
-                else
-                {
-                    unset($result['seq']) ;
-                    return $result ;
-                }
+                unset($result['seq']) ;
+                return $result ;
             }
             
         }
@@ -143,6 +122,14 @@ class QueueClient
         $request = array( "action"=>7);
         return $this->do_request($request) ;
     }
+
+    function get_leader()
+    {
+        $now = time() ;
+        $request = array( "action"=>8);
+        return $this->do_request($request) ;
+    }
+
 
 
 }
@@ -227,7 +214,7 @@ $queue_name = 'test_queue' ;
 $client = new QueueClient($host_list,uniqid('test_'),false) ;
 
 $msg_data = 'test_' . time() ;
-$result = $client->produce($msg_data,time()-3600,0,0) ;
+$result = $client->produce($msg_data,time(),0,time()) ;
 assert($result['code'] == 0 && $result['msg_id'] >0) ;
 
 $result  = $client->consume();
@@ -261,5 +248,6 @@ $result  = $client->consume();
 assert($result['code'] == 0 && empty($result['msg_id']) && empty($result['data']) ) ;
 
 var_dump($client->list_queue()) ;
+var_dump($client->get_leader()) ;
 
 ?>

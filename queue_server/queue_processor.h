@@ -18,6 +18,7 @@ enum
     ACTION_CONFIG = 5 ,
     ACTION_CLEAR = 6 ,
     ACTION_LIST = 7 ,
+    ACTION_GET_LEADER = 8 ,
     ACTION_LOCAL_START = 100,
     ACTION_LOCAL_MONITOR = 104,
     ACTION_LOCAL_LIST = 107,
@@ -27,8 +28,6 @@ enum
 static const char FIELD_CODE[] = "code" ;
 static const char FIELD_REASON[] = "reason" ;
 static const char FIELD_DATA[] = "data" ;
-static const char FIELD_MASTER_PORT[] = "master_port" ;
-static const char FIELD_MASTER_HOST[] = "master_host" ;
 static const char FIELD_ACTION[] = "action" ;
 static const char FIELD_QUEUE[] = "queue" ;
 static const char FIELD_DELAY[] = "delay" ;
@@ -43,6 +42,7 @@ public:
     virtual ~QueueProcessor();
     static int fill_response(Document& request,int code=0,const char* reason = "") ;
     static int process(Document& request) ;
+    static int process_virtual_produce(Document& request,const std::string& queue_name);
     static int process_produce(Document& request,Queue& queue);
     static int process_consume(Document& request,Queue& queue);
     static int process_confirm(Document& request,Queue& queue);
@@ -50,6 +50,9 @@ public:
     static int process_config(Document& request,Queue& queue);
     static int process_clear(Document& request,Queue& queue);
     static int process_list(Document& request);
+    static int process_get_leader(Document& request);
     static void fill_server_info(Document& server_info);
+
+    static bool is_queue_request(int action) ;
 };
 

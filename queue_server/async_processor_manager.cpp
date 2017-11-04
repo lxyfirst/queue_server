@@ -41,6 +41,16 @@ void AsyncProcessorManager::free_fsm(base_fsm* object)
     delete object ;
 }
 
+MajorityProcessor::MajorityProcessor():m_status(STATUS_INIT),m_wait_count(0),m_success_count(0)
+{
+
+   m_timer.set_callback(this,&MajorityProcessor::on_timeout) ;
+}
+
+MajorityProcessor::~MajorityProcessor()
+{
+
+}
 
 int MajorityProcessor::enter(fsm_manager* fm,int event_type,void* arg)
 {
@@ -50,7 +60,7 @@ int MajorityProcessor::enter(fsm_manager* fm,int event_type,void* arg)
         m_status = STATUS_WAIT_DATA ;
         arg = NULL ;
 
-        get_app().add_timer_after(this,5000) ;
+        get_app().add_timer_after(&m_timer,5000) ;
 
         if( m_wait_count >0  || m_success_count >0) return 0 ;
 
