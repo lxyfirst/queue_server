@@ -4,16 +4,18 @@ class QueueClient
 {
     private $tcp_flag = false ;
     private $timeout = null ;
+    private $max_data_size = 10240 ;
     private $host_list = null ;
     private $queue_name = '' ;
     private $master = null ;
 
-    function __construct( $host_list,$queue_name='',$tcp_flag=false,$timeout=2)
+    function __construct( $host_list,$queue_name='',$tcp_flag=false,$timeout=2,$max_data_size=10240)
     {
         $this->host_list = $host_list ;
         $this->queue_name = $queue_name ;
         $this->tcp_flag =  $tcp_flag ;
         $this->timeout =  $timeout ;
+        $this->max_data_size = $max_data_size ;
 
     }
 
@@ -35,13 +37,14 @@ class QueueClient
             if($this->tcp_flag)  $protocol = 'tcp://'  ;
             else $protocol =  'udp://' ;
             if(!empty($sock) ) fclose($sock) ;
-            $sock = fsockopen('tcp://' . $host['host'],$host['port'],$errno,$errstr,$this->timeout);
+            $sock = fsockopen($protocol . $host['host'],$host['port'],$errno,$errstr,$this->timeout);
             if(!$sock) continue ;
             stream_set_timeout($sock,$this->timeout) ;
+            stream_set_chunk_size($sock,$this->max_data_size) ;
 
             $ret = fwrite($sock, $send_data, strlen($send_data));
             if($ret != strlen($send_data) )  continue ;
-            $buf = fread($sock, 10240);
+            $buf = fread($sock,$this->max_data_size);
             if(!$buf) continue ;
             $result = json_decode($buf,true) ;
             if ( !is_array($result) ) continue ;
@@ -209,7 +212,7 @@ function bench_process($process,$count,$host_list)
 
 $host_list = array(
     array('host'=>'127.0.0.1','port'=>1111), 
-    array('host'=>'127.0.0.1','port'=>1113), 
+    array('host'=>'127.0.0.1','port'=>1112) 
 ) ;
 
 //bench_process(4,10000,$host_list) ;
@@ -219,16 +222,16 @@ $host_list = array(
 $begin_time = microtime() ;
 $station_id = "test" ;
 $queue_name = "task#${station_id}:order:event" ;
-$queue_name = 'test_queue' ;
+//$queue_name = uniqid('test_') ;
 
-$client = new QueueClient($host_list,uniqid('test_'),false) ;
+$client = new QueueClient($host_list,$queue_name,true,2,20480) ;
 
 $msg_data = 'test_' . time() ;
 $result = $client->produce($msg_data,time(),0,time()) ;
 assert($result['code'] == 0 && $result['msg_id'] >0) ;
 
 $result  = $client->consume();
-assert($result['code'] == 0 && $result['msg_id'] >0 && $result['data'] == $msg_data ) ;
+assert($result['code'] == 0 && $result['msg_id'] >0 && strlen($result['data']) >1 ) ;
 
 $msg_id = $result['msg_id'] ;
 $result  = $client->confirm($msg_id);

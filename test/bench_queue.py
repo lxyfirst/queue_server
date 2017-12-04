@@ -65,10 +65,18 @@ class ClientProtocol(asyncio.DatagramProtocol):
         data = { 'action':3,'msg_id':msg_id,'queue':queue }
         self.send_request(data)
 
+    def send_list_queue(self):
+        data = { 'action':7}
+        self.send_request(data)
+
+
 
     def on_start(self):
-        if self.request >= GlobalConfig.request : self.transport.close()
-        else : self.send_produce()
+        if self.request >= GlobalConfig.request : 
+            self.transport.close()
+        else : 
+            #self.send_produce()
+            self.send_list_queue()
 
     def on_result(self,response):
         if 'msg_id' in response and response['action'] in [1,2] :
