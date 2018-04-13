@@ -49,7 +49,7 @@ public:
     static int process_monitor(Document& request,Queue& queue);
     static int process_config(Document& request,Queue& queue);
     static int process_clear(Document& request,Queue& queue);
-    static int process_list(Document& request);
+    static int process_list(Document& request,const char* pattern);
     static int process_get_leader(Document& request);
     static void fill_server_info(Document& server_info);
 

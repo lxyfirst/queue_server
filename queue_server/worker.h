@@ -27,6 +27,7 @@
 
 using rapidjson::Document ;
 using rapidjson::Value ;
+using rapidjson::Type;
 using rapidjson::StringBuffer;
 
 using framework::eventfd_handler ;
@@ -92,7 +93,7 @@ public:
     void del_timer(framework::base_timer* timer) ;
     void on_timeout(framework::timer_manager* manager) ;
 
-    void list_queue(Document& queue_list) ;
+    void list_queue(Document& queue_list,const char* pattern) ;
 
 
 protected:

@@ -512,7 +512,7 @@ int QueueServer::on_sync_queue_response(ServerHandler* handler,const framework::
 
     int64_t trans_id = response.body.trans_id() ;
     debug_log_format(m_logger,"sync notify trans_id:%lld",trans_id) ;
-    if(m_self_vote_info.trans_id() == response.body.last_trans_id() )
+    if(m_self_vote_info.trans_id() >= response.body.last_trans_id() )
     {
         //sync notify or response is continuous , update local queue and log
         if(m_worker.notify_sync_request(response.body) !=0 )

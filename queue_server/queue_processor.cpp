@@ -41,7 +41,7 @@ int QueueProcessor::process(Document& request)
     {
     case ACTION_LIST:
     case ACTION_LOCAL_LIST:
-        return process_list(request) ;
+        return process_list(request,json_get_value(request,"pattern","") ) ;
     case ACTION_GET_LEADER:
         return process_get_leader(request) ;
     }
@@ -178,10 +178,10 @@ int QueueProcessor::process_monitor(Document& request,Queue& queue)
     return fill_response(request) ;
 }
 
-int QueueProcessor::process_list(Document& request)
+int QueueProcessor::process_list(Document& request,const char* pattern)
 {
     rapidjson::Document queue_list ;
-    get_worker().list_queue(queue_list ) ;
+    get_worker().list_queue(queue_list,pattern) ;
 
     request.AddMember("queue_count",queue_list.Size(),request.GetAllocator()) ;
     request.AddMember("queue_list",queue_list,request.GetAllocator()) ;

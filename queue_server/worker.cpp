@@ -410,15 +410,15 @@ void Worker::process_sync_queue(SyncQueueData& sync_data)
     if(queue) queue->update(sync_data) ;
 }
 
-void Worker::list_queue(Document& queue_list)
+void Worker::list_queue(Document& queue_list,const char* pattern)
 {
     queue_list.SetArray() ;
     for(auto& pair : m_queue_manager)
     {
         if(pair.second == NULL) continue ;
+        if(strlen(pattern) >0 && pair.first.find(pattern) == std::string::npos) continue ;
 
-        Value value  ;
-        value.SetObject() ;
+        Value value(Type::kObjectType)  ;
         value.AddMember("size",pair.second->size(),queue_list.GetAllocator() ) ;
         value.AddMember("wait_status",pair.second->wait_status(),queue_list.GetAllocator() ) ;
         value.AddMember("name",pair.first,queue_list.GetAllocator()) ;
