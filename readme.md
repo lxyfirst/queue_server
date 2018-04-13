@@ -126,6 +126,7 @@ $make && make install
 #### 请求
  action: 请求类型，数字， 1:生产消息  2:消费消息 3:确认消息 4:监控  7:队列列表 8:获取leader信息 104:本节点监控 107:本节点队列列表 。   
  queue: 队列名字，字符串 。   
+ pattern : 队列名匹配模式，字符串。 
  delay : 消息延迟处理时间，数字 。   
  ttl :  消息过期时间，数字 ， 应大于delay。  
  retry : 消息未确认时重新进入队列时间，数字，0表示不重试，即最多处理一次，>0表示重试间隔，直到超时，即最少处理1次。  
@@ -147,3 +148,14 @@ $make && make install
  max_log_size ： 消息日志最大数量。    
  trans_id ： 当前trans_id值。   
  wait_status : 队列拥塞情况。     
+
+
+### 协议   
+ 生产消息   ：(action,queue,delay,ttl,retry,data) -> (action,code,reason,msg_id)   
+ 消费消息   : (action,queue) -> (action,code,reason,msg_id,data)   
+ 确认消息   : (action,msg_id) -> (acton,code,reason)    
+ 监控       : (action) -> (action,code,reason,size,max_id,wait_status,leader_node_id,node_id,trans_id)   
+ 列表       : (action,pattern) -> (action,code,reason,queue_list,queue_count)   
+ leader信息 : (action) -> (action,code,reason,leader_node_id,leader_host,leader_port)   
+
+ 
