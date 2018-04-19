@@ -20,7 +20,7 @@ APP_VERSION=$(shell git show --format="%H" --quiet)
 CC=clang++
 CFLAGS= -std=c++11 -Wall -D_REENTRANT -D_GNU_SOURCE -fPIC -DAPP_VERSION=\"$(APP_VERSION)\"
 INC= -I. -I../framework -I..
-LDFLAGS=-lprotobuf -lrt -lpthread -ltcmalloc
+LDFLAGS=-L/usr/local/lib -lprotobuf -lrt -lpthread -ltcmalloc
 
 ifeq ($(release), 1)
 CFLAGS += -O2 -DNDEBUG 

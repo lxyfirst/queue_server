@@ -46,14 +46,8 @@ release: clean
 %.pb.o : %.pb.cc
 	$(CC) $(CFLAGS) $(INC) -c  $< 
 
-proto : 
-	@if $(CC) -S *.pb.h -o /dev/null >/dev/null 2>&1 ;  \
-	then  \
-        echo "proto files already exists"   ;\
-	else  \
-		/usr/bin/protoc --cpp_out=. *.proto   ;\
-        echo "generate proto files successfully"  ;\
-	fi
+%.pb.h : %.proto
+	protoc --cpp_out=.  $< 
 
 -include  $(DEPS)
 

@@ -302,7 +302,8 @@ void QueueServer::set_leader(const VoteData& vote_data)
     m_leader_vote_info.switch_object() ;
     m_worker.notify_leader_change() ;
 
-    info_log_format(m_logger,"new leader node_id:%d",m_node_info.leader_id) ;
+    warn_log_format(m_logger,"new leader vote_id:%d node_id:%d trans_id:%ld",
+            vote_data.vote_id(),vote_data.node_id(),vote_data.trans_id() ) ;
 
     try_sync_queue() ;
 }
@@ -417,7 +418,8 @@ int QueueServer::on_other_vote(ServerHandler* handler,const framework::packet_in
 {
     SSVoteRequest request ;
     if(request.decode(pi->data,pi->size)!=pi->size) return -1 ;
-    info_log_format(m_logger,"recv vote vote_id:%d node_id:%d",request.body.vote_id(),request.body.node_id()) ;
+    warn_log_format(m_logger,"recv vote vote_id:%d node_id:%d trans_id:%ld",
+            request.body.vote_id(),request.body.node_id(),request.body.trans_id() ) ;
 
     SSVoteResponse response ;
     response.head = request.head ;
@@ -551,7 +553,7 @@ void QueueServer::try_sync_queue()
 {
 	if(is_leader() )
 	{
-		trace_log_format(m_logger,"this is leader node , stop sync queue") ;
+		info_log_format(m_logger,"this is leader node , stop sync queue") ;
 		return ;
 	}
 

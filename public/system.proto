@@ -17,15 +17,14 @@ enum SystemMessageType
 
     VOTE_NOTIFY = 267 ;     // VoteData
 
-    PUSH_QUEUE_REQUEST = 269 ;    // PushQueueRequest
-    PUSH_QUEUE_RESPONSE = 270 ;   // CommonResponse
+    PUSH_QUEUE_REQUEST = 269 ;    
+    PUSH_QUEUE_RESPONSE = 270 ;   
 
-    POP_QUEUE_REQUEST = 271 ;    // PopQueueRequest
-    POP_QUEUE_RESPONSE = 272 ;   // CommonResponse
+    POP_QUEUE_REQUEST = 271 ;    
+    POP_QUEUE_RESPONSE = 272 ;   
 
     SYNC_QUEUE_REQUEST = 273 ;    // SyncQueueRequest
     SYNC_QUEUE_RESPONSE = 274 ;   // SyncQueueData
-    //SYNC_QUEUE_NOTIFY = 275 ;     // SyncQueueData
 
     FORWARD_REQUEST = 277 ;  //ForwardData
     FORWARD_RESPONSE = 278 ; //ForwardData
@@ -40,12 +39,6 @@ enum SystemErrorType
     EC_VOTE_FAILED = 257 ;
     EC_VOTE_LEADER_EXIST = 258 ;
 }
-
-message CommonResponse
-{
-    optional int32 error_code = 1 [default=0];
-}
-
 
 message RegisterRequest
 {
@@ -69,35 +62,6 @@ message StatusResponse
 
 }
 
-message ConfigData
-{
-    required int32 node_type = 1 ;
-    optional int32 protect_mode = 4 [default=0] ;
-    required string data = 2 ;
-    repeated int32 online_node_list = 3 ;
-}
-
-message ConfigDataRequest
-{
-
-    repeated int32 node_type_list = 1 ;
-}
-
-
-message ConfigDataResponse
-{
-    required int32 error_code =1 [default=0] ;
-    repeated ConfigData data_list = 3 ;
-}
-
-message BroadcastNotify
-{
-    repeated int32 uid_list =1 ;
-    optional int32 msg_type = 2 [default=0];
-    required bytes data = 3 ; // encoded protobuf message
-
-}
-
 message VoteData
 {
     optional int32 vote_id = 1 [default=0];
@@ -114,24 +78,6 @@ message VoteResponse
     optional VoteData data = 2 ;
 }
 
-message PushQueueRequest 
-{
-    required int64 trans_id = 1 ;
-    required string queue = 2 ;
-    required int32 message_id = 3 ;
-    optional int32 delay = 4 [default=0];
-    optional int32 ttl = 5 [default=0];
-    optional int32 retry = 6 [default=0];
-    optional int32 max_count = 7 [default=0]; 
-    required bytes data = 8 ; 
-}
-
-message PopQueueRequest
-{
-    required int64 trans_id = 1 ;
-    required string queue = 3 ; 
-    required int32 message_id = 4 ;
-}
 
 message SyncQueueRequest
 {
@@ -159,12 +105,3 @@ message ForwardData
     required bytes source = 2 ;
     required int32 timestamp = 3 ;
 }
-
-
-
-
-
-
-
-
-
