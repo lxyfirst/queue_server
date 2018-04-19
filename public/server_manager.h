@@ -18,7 +18,7 @@ struct ServerInfo
     char host[24] ;
     int port ;
     int16_t node_id ;
-    int8_t online_status ;
+    int16_t node_type ;
 };
 
 
@@ -39,13 +39,12 @@ inline int8_t get_node_type(int16_t server_id)
 
 typedef std::map<int,ServerInfo> ServerInfoContainer ;
 
-
 namespace framework
 {
     class day_roll_logger ;
     class base_reactor ;
-    class day_roll_logger ;
 }
+
 
 class ServerHandler ;
 

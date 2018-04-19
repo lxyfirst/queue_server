@@ -151,10 +151,9 @@ void ServerManager::check_server_connect(int server_type,const ServerInfoContain
     for(it = server_list.begin();it!= server_list.end();++it)
     {
         int remote_server_id=get_server_id(server_type,it->first);
-        if(it->second.online_status && (m_local_server_id != remote_server_id) )
-        {
-            create_connection(it->second.host,it->second.port,remote_server_id);
-        }
+        if(m_local_server_id == remote_server_id) continue ;
+        create_connection(it->second.host,it->second.port,remote_server_id);
+
     }
 
     check_idle_connection() ;

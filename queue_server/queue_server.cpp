@@ -106,9 +106,8 @@ int QueueServer::load_cluster_config(const Value& cluster_node_list)
             ServerInfo& server_info = cluster_info[node_id] ;
             server_info.host[sizeof(server_info.host)-1] = '\0' ;
             strncpy(server_info.host,node["host"].GetString(),sizeof(server_info.host)-1 ) ;
-            server_info.node_id = node_id ;
             server_info.port = node["port"].GetInt() ;
-            server_info.online_status = 1;
+            server_info.node_id = node_id ;
         }
     }
 
