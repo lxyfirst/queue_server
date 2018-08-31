@@ -54,7 +54,6 @@ public:
 
 public:
     // server event
-    int on_server_connection(int fd,framework::sa_in_t* addr) ;
     void on_server_opend(int remote_server_id);
     void on_server_closed(int remote_server_id);
     int on_server_packet(ServerHandler* handler,const framework::packet_info* pi);

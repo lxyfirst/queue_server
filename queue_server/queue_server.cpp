@@ -48,19 +48,12 @@ int QueueServer::on_init()
     if(m_log_thread.start() !=0) error_return(-1,"init log thread failed") ;
 
     int16_t local_server_id = get_server_id(m_node_info.node_type,m_node_info.node_id) ;
-    if(m_server_manager.init(&m_logger,&reactor(),this,local_server_id) !=0) error_return(-1,"init manager failed") ;
 
     if(m_cluster_info.count(m_node_info.node_id) <1 ) error_return(-1,"cannot get node info") ;
     const ServerInfo& m_self_info = m_cluster_info[m_node_info.node_id] ;
 
-    using std::placeholders::_1 ;
-    using std::placeholders::_2 ;
-    auto server_callback = std::bind(&QueueServer::on_server_connection,this,_1,_2) ;
-    if(m_server_acceptor.init(reactor(),m_self_info.host,m_self_info.port,server_callback )!=0)
-    {
-        error_return(-1,"init server acceptor failed") ;
-    }
-
+    if(m_server_manager.init(&m_logger,&reactor(),this,local_server_id) !=0) error_return(-1,"init manager failed") ;
+    if(m_server_manager.init_acceptor(m_self_info.host,m_self_info.port)!=0 ) error_return(-1,"init acceptor failed") ;
 
     //init event queue
     if(m_event_queue.init(log_size())!=0) error_return(-1,"init queue failed") ;
@@ -253,7 +246,6 @@ void QueueServer::on_fini()
 
 void QueueServer::on_delay_stop()
 {
-    m_server_acceptor.fini() ;
     m_worker.stop() ;
 }
 
@@ -336,14 +328,6 @@ int QueueServer::start_vote()
 void QueueServer::stop_vote()
 {
     m_node_info.vote_status = 0 ;
-}
-
-
-
-int QueueServer::on_server_connection(int fd,sa_in_t* addr)
-{
-    return m_server_manager.on_new_connection(fd) ;
-
 }
 
 

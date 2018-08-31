@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <map>
 #include <set>
+#include "framework/tcp_acceptor.h"
 #include "server_handler.h"
 
 struct ServerInfo
@@ -69,7 +70,7 @@ public:
     virtual ~ServerManager();
     
     int init(framework::day_roll_logger* logger,framework::base_reactor* reactor,ServerObserver* observer,int16_t local_server_id) ;
-    
+    int init_acceptor(const char* host,int port) ;
     void fini() ;
     
     /*
@@ -87,7 +88,7 @@ public:
      * @brief accept remote server connection
      * @return 0 on success
      */
-    int on_new_connection(int fd) ;
+    int on_new_connection(int fd,framework::sa_in_t* addr) ;
 
     /*
      * @brief register connection to server id
@@ -152,6 +153,7 @@ private:
     ConnectionContainer m_conn_container ;
     framework::day_roll_logger* m_logger ;
     framework::base_reactor* m_reactor ;
+    framework::tcp_acceptor m_acceptor ;
     //CallbackType m_callback ;
     ServerObserver* m_observer ;
     int16_t m_local_server_id ;

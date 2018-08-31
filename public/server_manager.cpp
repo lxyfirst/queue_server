@@ -5,7 +5,7 @@
  *      Author: cjfeng
  */
 
-
+#include <functional>
 #include "framework/day_roll_logger.h"
 
 #include "server_handler.h"
@@ -33,6 +33,19 @@ int ServerManager::init(day_roll_logger* logger,base_reactor* reactor,ServerObse
     m_observer = observer ;
     m_local_server_id = local_id ;
     
+    return 0 ;
+}
+
+int ServerManager::init_acceptor(const char* host,int port)
+{
+    using std::placeholders::_1 ;
+    using std::placeholders::_2 ;
+    auto server_callback = std::bind(&ServerManager::on_new_connection,this,_1,_2) ;
+    if(m_acceptor.init(*m_reactor,host,port,server_callback )!=0)
+    {
+       return -1 ;
+    }
+
     return 0 ;
 }
 
@@ -68,7 +81,7 @@ int ServerManager::create_connection(const char* host,int port,int remote_server
     return 0 ;    
 }
 
-int ServerManager::on_new_connection(int fd) 
+int ServerManager::on_new_connection(int fd,framework::sa_in_t* addr)
 {
     
     ServerHandler* server_handler = new ServerHandler(this,m_local_server_id) ;
